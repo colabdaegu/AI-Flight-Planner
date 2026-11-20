@@ -1,0 +1,62 @@
+{
+  "no": 5,
+  "requirement": "F3005",
+  "item": "기준·선호·제약 추출, 없는 조건은 비움",
+  "status": "통과",
+  "note": "분석 출처 llm. 빠진 요청은 date·시각·제약을 비워 둠",
+  "elapsed_ms": 4945,
+  "evidence": {
+    "full_request": {
+      "message": "내일 오후 3시 이후 김포에서 제주 가는 가장 빠른 편, 공항에는 1시 반에 도착해. 준비는 1시간이면 돼",
+      "source": "llm",
+      "reason": "내일 오후 3시 이후 김포→제주 항공편 중 가장 빠른 편을 찾고, 공항 도착 시각과 준비 시간(1시간) 조건을 함께 제시했기 때문입니다.",
+      "groups": {
+        "기준": {
+          "date": "20261121",
+          "from_time": "1500",
+          "airport": "GMP"
+        },
+        "선호": {
+          "destination": "제주",
+          "origin": "김포",
+          "earliest": true
+        },
+        "제약": {
+          "arrive_airport_at": "1330",
+          "buffer_min": 60
+        }
+      },
+      "empty": [
+        "flexible_date",
+        "flight_no",
+        "keyword",
+        "to_time"
+      ]
+    },
+    "partial_request": {
+      "message": "제주 가는 편 알려줘",
+      "source": "llm",
+      "reason": "사용자가 제주로 가는 항공편을 알려달라고 요청했다.",
+      "groups": {
+        "기준": {},
+        "선호": {
+          "destination": "제주"
+        },
+        "제약": {}
+      },
+      "empty": [
+        "date",
+        "flexible_date",
+        "from_time",
+        "airport",
+        "flight_no",
+        "origin",
+        "earliest",
+        "keyword",
+        "to_time",
+        "arrive_airport_at",
+        "buffer_min"
+      ]
+    }
+  }
+}

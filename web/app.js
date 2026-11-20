@@ -11,7 +11,7 @@ const TOOL_LABEL = {
   search_departures: "출발 편 조회", search_arrivals: "도착 편 조회", search_flight: "편명 조회",
   get_flight_detail: "편명 상세", get_airport_congestion: "공항 혼잡도", get_incheon_passenger_forecast: "인천 승객 예고",
   get_incheon_facilities: "인천 시설 안내", get_commercial_facilities: "상업시설 계약", get_airport_overview: "공항 개요",
-  search_airports: "공항 검색",
+  search_airports: "공항 검색", get_hourly_traffic: "시간대별 흐름",
 };
 const INTENT_LABEL = {
   departures: "출발 편 찾기", arrivals: "도착 편 찾기", flight_detail: "편명 조회", congestion: "혼잡도",
@@ -67,15 +67,28 @@ function button(text, cls, onClick) {
 }
 
 // ---------------- 탭 ----------------
+// 메뉴 전환: 지원 브라우저에서는 View Transitions 로 본문이 부드럽게 바뀐다
 function showTab(name) {
+  const current = document.querySelector(".tab.active");
+  const same = current && current.id === `tab-${name}`;
+  const calm = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (document.startViewTransition && !same && !calm) document.startViewTransition(() => applyTab(name));
+  else applyTab(name);
+}
+
+function applyTab(name) {
   // 내 계획 탭을 떠나면 입력·수정 중이던 내용을 처음 상태로 비운다
   if (name !== "plans" && $("#tab-plans").classList.contains("active")) resetPlanForm();
+  const wasActive = document.querySelector(".tabs button.active");
   document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.id === `tab-${name}`));
   const btn = document.querySelector(`.tabs button[data-tab="${name}"]`);
-  if (btn) {
-    $("#headline").textContent = btn.dataset.title;
-    $("#subline").textContent = btn.dataset.sub;
+  if (btn && btn !== wasActive) {
+    if (window.FX && FX.headline) FX.headline(btn);   // 전광판 제목 (fx.js)
+    else {
+      $("#headline").textContent = btn.dataset.title;
+      $("#subline").textContent = btn.dataset.sub;
+    }
   }
   if (name === "plans") loadPlans();
   if (name === "logs") loadLogs();
@@ -239,7 +252,7 @@ const mapState = {};
 
 function airportQuery(point) {
   if (!point || !(point.name || point.code)) return "";
-  if (KR.includes(point.code)) return `${point.name}국제공항`.replace("국제공항국제공항", "국제공항");
+  if (OFFICIAL[point.code]) return OFFICIAL[point.code];
   return point.name ? `${point.name} 공항` : `${point.code} airport`;
 }
 
@@ -310,7 +323,7 @@ function toneOf(remark) {
 
 function stop(point, cls) {
   const s = el("div", null, `stop ${cls}`);
-  s.append(el("b", point.code || "-"), el("small", point.name || ""));
+  s.append(el("b", point.code || "-"), el("small", OFFICIAL[point.code] || point.name || ""));
   return s;
 }
 
@@ -410,7 +423,7 @@ function renderBoard(prefix, data) {
   list.replaceChildren();
   mapCard.hidden = true;
   [
-    data.searched ? null : `${data.airport_name} (${data.airport})`,
+    data.searched ? null : `${OFFICIAL[data.airport] || data.airport_name} (${data.airport})`,
     fmtYmd(data.date),
     data.flight_no ? `편명 ${data.flight_no}` : null,
     `${data.count}건`,
@@ -422,7 +435,7 @@ function renderBoard(prefix, data) {
   let activeCard = null;
   const cards = data.flights.map((f, i) => {
     const code = f.airport || data.airport;
-    const { card, from, to } = buildTicket(f, { code, name: NAME_OF[code] || data.airport_name }, prefix === "flt");
+    const { card, from, to } = buildTicket(f, { code, name: OFFICIAL[code] || data.airport_name }, prefix === "flt");
     const select = () => {
       if (activeCard) activeCard.classList.remove("on");
       activeCard = card;
@@ -565,9 +578,15 @@ function traceItems(trace) {
         break;
       case "intent_analyzed": {
         const cond = Object.entries(p.conditions || {}).map(([k, v]) => `${k}=${v}`).join(", ");
+        // 기준 · 선호 · 제약으로 나눈 조건 (F3005). 말하지 않은 조건은 '비움'
+        const grouped = p.groups ? Object.entries(p.groups).map(([g, kv]) => {
+          const t = Object.entries(kv || {}).map(([k, v]) => `${k}=${v}`).join(", ");
+          return `${g}: ${t || "없음"}`;
+        }) : (cond ? [`조건: ${cond}`] : []);
         add(p.source === "llm" ? "llm" : "rule",
           `의도 분석 (${p.source === "llm" ? "LLM" : "규칙"}) → ${INTENT_LABEL[p.intent] || p.intent}`,
-          [p.reason && `이유: ${p.reason}`, cond && `조건: ${cond}`,
+          [p.reason && `이유: ${p.reason}`, ...grouped,
+            p.empty && p.empty.length ? `비움(말하지 않아 채우지 않음): ${p.empty.join(", ")}` : null,
             p.inherited && p.inherited.length ? `이전 대화에서 이어받음: ${p.inherited.join(", ")}` : null, p.note]
             .filter(Boolean).join("\n"));
         break;
@@ -597,7 +616,7 @@ function traceItems(trace) {
       case "judged": {
         const parts = [p.decision === "enrich" ? "상세 보강 후 응답" : "응답"];
         if (p.candidates != null) parts.push(`후보 ${p.candidates}편`);
-        if (p.rejected) parts.push(`제외 ${p.rejected}편`);
+        if (p.rejected) parts.push(`제외 ${p.rejected}편${p.rejected_reasons ? ` (${Object.entries(p.rejected_reasons).map(([k, v]) => `${k} ${v}`).join(", ")})` : ""}`);
         if (p.chosen) parts.push(`선택 ${p.chosen}`);
         add("judge", `판단: ${parts.join(" · ")}`, [(p.criteria || []).join(" · "), p.reason].filter(Boolean).join("\n"));
         break;
@@ -736,11 +755,15 @@ function renderTimeline(list, trace) {
 
 // ---------------- 사용 기록 (이 브라우저의 localStorage 에만 저장, 서버로 보내지 않음) ----------------
 const USAGE_KEY = "planner-usage-v1";
-// 추천 질문·표시에 쓰는 공항의 정식 한국어 명칭 (서버 airports.NAMES 와 같은 값)
-const NAME_OF = {
+// 공항의 정식 한국어 명칭 (카드·요약·지도에 쓴다)
+const OFFICIAL = {
   ICN: "인천국제공항", GMP: "김포국제공항", PUS: "김해국제공항", CJU: "제주국제공항", TAE: "대구국제공항",
-  CJJ: "청주국제공항", KWJ: "광주공항", USN: "울산공항", HIN: "사천공항", RSU: "여수공항", WJU: "원주공항",
-  YNY: "양양국제공항", KPO: "포항경주공항", KUV: "군산공항", MWX: "무안국제공항",
+  CJJ: "청주국제공항", KWJ: "광주공항", USN: "울산공항", HIN: "사천공항", RSU: "여수공항",
+  WJU: "원주공항", YNY: "양양국제공항", KPO: "포항경주공항", KUV: "군산공항", MWX: "무안국제공항",
+};
+const NAME_OF = {
+  ICN: "인천", GMP: "김포", PUS: "김해", CJU: "제주", TAE: "대구", CJJ: "청주", KWJ: "광주", USN: "울산",
+  HIN: "사천", RSU: "여수", WJU: "원주", YNY: "양양", KPO: "포항", KUV: "군산", MWX: "무안",
 };
 
 function loadUsage() {
@@ -806,13 +829,15 @@ async function resolvePlaceNames() {
   return changed;
 }
 
-// 인천과 제주를 뺀 국내선을 잇는 노선은 환승객 전용 편이라 일반 승객 추천 질문에 쓰지 않는다
-function transferOnly(a, b) {
-  const domestic = (c) => Boolean(NAME_OF[c]) && c !== "ICN";
-  return (a === "ICN" && domestic(b) && b !== "CJU") || (b === "ICN" && domestic(a) && a !== "CJU");
+// 인천공항 국내선은 제주만 정기편이다 (김해·대구 노선은 국제선 환승객 전용). 그런 노선은 추천 질문에 넣지 않는다.
+function regularRoute(a, b) {
+  const dom = (c) => Boolean(NAME_OF[c]);
+  if (a === "ICN" && dom(b) && b !== "CJU") return false;
+  if (b === "ICN" && dom(a) && a !== "CJU") return false;
+  return a !== b;
 }
 
-// 사용 기록이 있으면 그 공항·노선·편명으로, 없으면 김해–제주 노선으로 질문을 만든다. 들어올 때마다 순서가 바뀐다.
+// 사용 기록이 있으면 그 공항·노선·편명으로, 없으면 김포에서 지방 공항으로 가는 노선으로 질문을 만든다. 들어올 때마다 순서가 바뀐다.
 function suggestions() {
   const u = loadUsage();
   const pool = [];
@@ -820,32 +845,26 @@ function suggestions() {
   const airportsUsed = topKeys(u.airports, 3);
   routes.forEach((r) => {
     const [a, b] = r.split("-");
-    if (transferOnly(a, b)) {
-      // 인천↔부산·대구 등은 환승객만 탈 수 있어 추천하지 않는다. 대신 김포 출발 질문으로 바꾼다.
-      const other = a === "ICN" ? b : a;
-      if (other !== "GMP" && NAME_OF[other]) pool.push(`${NAME_OF.GMP}에서 ${NAME_OF[other]} 가는 가장 빠른 항공편`);
-      return;
-    }
     const A = placeName(a, u);
     const B = placeName(b, u);
     // 출발·도착 조회는 국내 공항에서만 되므로 앞쪽은 국내 공항, 한국어 이름을 모르는 공항은 넣지 않는다
-    if (!NAME_OF[a] || !A || !B) return;
+    if (!NAME_OF[a] || !A || !B || !regularRoute(a, b)) return;
     pool.push(`${A}에서 ${B} 가는 가장 빠른 항공편`, `내일 ${A}에서 ${B} 오후 3시 이후`,
-      `${A}에 8시 도착하면 탈 수 있는 ${B}행 항공편`, `${A}에 도착하는 ${B}발 항공편`);
+      `${A}공항에 8시 도착하면 탈 수 있는 ${B}행 항공편`, `${A}에 도착하는 ${B}발 항공편`);
   });
   airportsUsed.forEach((a) => {
     const A = placeName(a, u);
     if (!NAME_OF[a] || !A) return;   // 혼잡도·시간표는 국내 공항만
-    pool.push(`${A} 지금 붐벼?`, `${A} 오늘 출발 시간표 보여줘`, `${A} 몇 시에 제일 붐벼?`);
+    pool.push(`${A}공항 지금 붐벼?`, `${A} 오늘 출발 시간표 보여줘`, `${A} 몇 시에 제일 붐벼?`);
   });
   (u.flights || []).slice(0, 2).forEach((f) => pool.push(`${f} 지금 상태 알려줘`));
   if ((u.facility || 0) > 0 || airportsUsed.includes("ICN")) {
     pool.push("인천공항 출국장 약국 어디 있어?", "인천공항 면세점 어디 있어?");
   }
   if (!pool.length) {
-    pool.push("김해국제공항에서 제주국제공항 가는 가장 빠른 항공편", "내일 김해국제공항에서 제주국제공항 오후 3시 이후",
-      "김해국제공항에 7시 도착하면 탈 수 있는 제주행 항공편", "제주국제공항 도착하는 김해국제공항발 항공편",
-      "김해국제공항 지금 붐벼?", "내일 아침 제주국제공항에서 김해국제공항 가는 항공편", "김해국제공항 몇 시에 제일 붐벼?");
+    pool.push("김포에서 제주 가는 가장 빠른 항공편", "내일 김포에서 김해 오후 3시 이후",
+      "김포공항에 7시 도착하면 탈 수 있는 광주행 항공편", "김포 도착하는 여수발 항공편",
+      "김포공항 지금 붐벼?", "내일 아침 김포에서 울산 가는 항공편", "김포 몇 시에 제일 붐벼?");
   }
   return shuffle([...new Set(pool)]);
 }
@@ -925,9 +944,14 @@ function setBanner(text) {
 function bannerFromTrace(trace) {
   const noKey = (trace || []).some((e) => e.event === "tool_result" && e.payload && e.payload.code === "NO_KEY");
   const gms = (trace || []).find((e) => e.event === "intent_analyzed" && e.payload && e.payload.note);
+  // 도구 실패 안내 (F3019): 어떤 자료를 못 받았는지만 알리고 오류 상세는 보이지 않는다 (NF3002)
+  const failed = [...new Set((trace || []).filter((e) => e.event === "tool_result" && e.payload && e.payload.ok === false
+    && e.payload.code !== "NO_KEY").map((e) => TOOL_LABEL[e.payload.tool] || e.payload.tool))];
   if (noKey) return "공공데이터 키(DATA_GO_KR_KEY)가 없어 조회할 수 없습니다. 프로젝트 폴더 .env 에 키를 넣고 서버를 다시 켜십시오.";
-  if (gms) return `${gms.payload.note} (.env 의 GMS_API_KEY 를 확인하십시오)`;
-  return "";
+  const parts = [];
+  if (failed.length) parts.push(`일부 자료(${failed.join(", ")})를 불러오지 못했습니다. 받은 자료만으로 답했고, 실패 지점은 오른쪽 실행 과정에 빨간색으로 표시됩니다.`);
+  if (gms) parts.push(`${gms.payload.note} (.env 의 GMS_API_KEY 를 확인하십시오)`);
+  return parts.join(" ");
 }
 
 function addBotReply(data) {
@@ -1100,36 +1124,131 @@ function short(v) {
   return v && v.length >= 16 ? `${v.slice(5, 10)} ${v.slice(11, 16)}` : (v || "");
 }
 
-// 날짜 + 시각을 테두리 하나짜리 박스로 묶는다.
-// 날짜는 [연]-[월]-[일], 시각은 [시]:[분] 칸에 숫자로 친다.
-// 칸이 차면 다음 칸으로 넘어간다: 연 4자리 → 월, 월 2자리(또는 2~9) → 일, 일 2자리(또는 4~9) → 시, 시 2자리(또는 3~9) → 분.
-// 시·분은 ↑↓ 키로 1씩 바꿀 수 있고, 빈 칸에서 백스페이스를 누르면 앞 칸으로 돌아간다.
-function createDateTime(host) {
-  host.replaceChildren();
-  const num = (ph, label, max) => {
+// 날짜 [연]-[월]-[일] 과 시각 [시]:[분] 을 테두리 하나짜리 박스로 묶는다.
+// 숫자만 치면 칸이 저절로 넘어간다: 연 4자리 → 월, 월 2자리(또는 2~9) → 일, 일 2자리(또는 4~9) → 시, 시 2자리 → 분.
+// 달력 버튼으로 고를 수도 있다. ↑↓ 키로 1씩 바꾸고, 빈 칸에서 Backspace 를 누르면 앞 칸으로 간다.
+function createDateParts(host) {
+  const box = el("div", null, "dt-date");
+  const seg = (ph, len, label) => {
     const x = el("input");
     x.type = "text";
     x.inputMode = "numeric";
-    x.maxLength = max;
+    x.maxLength = len;
+    x.placeholder = ph;
+    x.autocomplete = "off";
+    x.setAttribute("aria-label", label);
+    x.className = `dt-seg w${len}`;
+    return x;
+  };
+  const yy = seg("연도", 4, "연도");
+  const mo = seg("월", 2, "월");
+  const dd = seg("일", 2, "일");
+  const picker = el("input");             // 달력 고르기용 (보이지 않는 표준 날짜 입력)
+  picker.type = "date";
+  picker.max = "9999-12-31";
+  picker.tabIndex = -1;
+  picker.className = "dt-picker";
+  picker.setAttribute("aria-hidden", "true");
+  const cal = button("", "dt-cal");
+  cal.tabIndex = -1;
+  cal.title = "달력에서 고르기";
+  cal.setAttribute("aria-label", "달력에서 고르기");
+  box.append(yy, el("span", "-", "dt-colon"), mo, el("span", "-", "dt-colon"), dd, cal, picker);
+  host.appendChild(box);
+
+  const listeners = [];
+  let next = null;                         // 일 칸을 다 치면 옮겨 갈 칸 (시 칸)
+  const fire = () => listeners.forEach((fn) => fn());
+  const valid = () => {
+    if (yy.value.length !== 4 || !mo.value || !dd.value) return "";
+    const v = `${yy.value}-${pad(Number(mo.value))}-${pad(Number(dd.value))}`;
+    const d = new Date(`${v}T00:00:00`);
+    return Number.isFinite(d.getTime()) && d.toISOString && fmtDate(d).slice(0, 10) === v ? v : "";
+  };
+  const go = (x) => { if (x) { x.focus(); if (x.select) x.select(); } };
+  yy.addEventListener("input", () => {
+    yy.value = yy.value.replace(/\D/g, "").slice(0, 4);
+    if (yy.value.length === 4) go(mo);
+    fire();
+  });
+  mo.addEventListener("input", () => {
+    mo.value = mo.value.replace(/\D/g, "").slice(0, 2);
+    if (mo.value.length === 2 || /^[2-9]$/.test(mo.value)) {
+      mo.value = pad(Math.min(Math.max(Number(mo.value), 1), 12));
+      go(dd);
+    }
+    fire();
+  });
+  dd.addEventListener("input", () => {
+    dd.value = dd.value.replace(/\D/g, "").slice(0, 2);
+    if (dd.value.length === 2 || /^[4-9]$/.test(dd.value)) {
+      dd.value = pad(Math.min(Math.max(Number(dd.value), 1), 31));
+      go(next);                            // 일 두 자리까지 치면 바로 시 칸으로
+    }
+    fire();
+  });
+  mo.addEventListener("blur", () => { if (mo.value) mo.value = pad(Math.min(Math.max(Number(mo.value), 1), 12)); fire(); });
+  dd.addEventListener("blur", () => { if (dd.value) dd.value = pad(Math.min(Math.max(Number(dd.value), 1), 31)); fire(); });
+  const back = (x, prev) => x.addEventListener("keydown", (e) => {
+    if (e.key === "Backspace" && x.selectionStart === 0 && x.selectionEnd === 0 && prev) { e.preventDefault(); go(prev); }
+    if (e.key === "ArrowLeft" && x.selectionStart === 0 && prev) { e.preventDefault(); go(prev); }
+  });
+  back(mo, yy);
+  back(dd, mo);
+  const fwd = (x, nx) => x.addEventListener("keydown", (e) => {
+    if ((e.key === "-" || e.key === "." || e.key === "/" || (e.key === "ArrowRight" && x.selectionStart === x.value.length)) && nx()) {
+      e.preventDefault();
+      go(nx());
+    }
+  });
+  fwd(yy, () => mo);
+  fwd(mo, () => dd);
+  fwd(dd, () => next);
+  [yy, mo, dd].forEach((x) => x.addEventListener("focus", () => x.select()));
+  const setValue = (v) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || "");
+    yy.value = m ? m[1] : "";
+    mo.value = m ? m[2] : "";
+    dd.value = m ? m[3] : "";
+  };
+  cal.addEventListener("click", () => {
+    picker.value = valid();
+    try { picker.showPicker(); } catch (e) { picker.focus(); picker.click(); }
+  });
+  picker.addEventListener("change", () => { setValue(picker.value); fire(); go(next); });
+  return {
+    get value() { return valid(); },
+    set value(v) { setValue(v); },
+    get filled() { return Boolean(yy.value || mo.value || dd.value); },
+    set disabled(on) { [yy, mo, dd, cal].forEach((x) => { x.disabled = on; }); },
+    first: yy,
+    setNext(x) { next = x; },
+    addEventListener(type, fn) { if (type === "change") listeners.push(fn); },
+  };
+}
+
+function createDateTime(host) {
+  host.replaceChildren();
+  const date = createDateParts(host);
+  const wrap = el("div", null, "dt-time");
+  const num = (ph, label) => {
+    const x = el("input");
+    x.type = "text";
+    x.inputMode = "numeric";
+    x.maxLength = 2;
     x.placeholder = ph;
     x.autocomplete = "off";
     x.setAttribute("aria-label", label);
     return x;
   };
-  const yy = num("연", "연", 4);
-  const mo = num("월", "월", 2);
-  const dd = num("일", "일", 2);
-  const hh = num("시", "시", 2);
-  const mm = num("분", "분", 2);
-  const dwrap = el("div", null, "dt-date");
-  dwrap.append(yy, el("span", "-", "dt-colon"), mo, el("span", "-", "dt-colon"), dd);
-  const wrap = el("div", null, "dt-time");
+  const hh = num("시", "시");
+  const mm = num("분", "분");
   wrap.append(hh, el("span", ":", "dt-colon"), mm);
-  host.append(dwrap, wrap);
+  host.append(wrap);
+  date.setNext(hh);
 
   const listeners = [];
   const fire = () => listeners.forEach((fn) => fn());
-  const digitsOnly = (x) => { x.value = x.value.replace(/\D/g, ""); };
   const two = (x, max) => {
     if (x.value === "") return;
     x.value = pad(Math.min(Number(x.value), max));
@@ -1139,36 +1258,17 @@ function createDateTime(host) {
     x.value = pad(v);
     fire();
   };
-  const go = (x) => { x.focus(); x.select(); };
-
-  yy.addEventListener("input", () => {
-    digitsOnly(yy);
-    if (yy.value.length === 4) go(mo);
-    fire();
-  });
-  mo.addEventListener("input", () => {
-    digitsOnly(mo);
-    if (mo.value.length === 2 || /^[2-9]$/.test(mo.value)) { two(mo, 12); go(dd); }
-    fire();
-  });
-  dd.addEventListener("input", () => {
-    digitsOnly(dd);
-    if (dd.value.length === 2 || /^[4-9]$/.test(dd.value)) { two(dd, 31); go(hh); }
-    fire();
-  });
   hh.addEventListener("input", () => {
-    digitsOnly(hh);
+    hh.value = hh.value.replace(/\D/g, "");
     // 두 자리를 쳤거나 3~9로 시작하면 바로 분 칸으로
-    if (hh.value.length === 2 || /^[3-9]$/.test(hh.value)) { two(hh, 23); go(mm); }
+    if (hh.value.length === 2 || /^[3-9]$/.test(hh.value)) { two(hh, 23); mm.focus(); mm.select(); }
     fire();
   });
   mm.addEventListener("input", () => {
-    digitsOnly(mm);
+    mm.value = mm.value.replace(/\D/g, "");
     if (mm.value.length === 2) two(mm, 59);
     fire();
   });
-  mo.addEventListener("blur", () => { two(mo, 12); fire(); });
-  dd.addEventListener("blur", () => { two(dd, 31); fire(); });
   hh.addEventListener("blur", () => { two(hh, 23); fire(); });
   mm.addEventListener("blur", () => {
     if (mm.value === "" && hh.value !== "") mm.value = "00";
@@ -1177,61 +1277,37 @@ function createDateTime(host) {
   });
   hh.addEventListener("keydown", (e) => {
     if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); step(hh, 23, e.key === "ArrowUp" ? 1 : -1); }
-    if ((e.key === ":" || e.key === "ArrowRight") && hh.selectionStart === hh.value.length) { e.preventDefault(); go(mm); }
-    if (e.key === "Backspace" && hh.value === "") { e.preventDefault(); go(dd); }
+    if ((e.key === ":" || e.key === "ArrowRight") && hh.selectionStart === hh.value.length) { e.preventDefault(); mm.focus(); }
   });
   mm.addEventListener("keydown", (e) => {
     if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); step(mm, 59, e.key === "ArrowUp" ? 1 : -1); }
-    if ((e.key === "Backspace" || e.key === "ArrowLeft") && mm.selectionStart === 0 && mm.selectionEnd === 0) { e.preventDefault(); go(hh); }
+    if ((e.key === "Backspace" || e.key === "ArrowLeft") && mm.selectionStart === 0 && mm.selectionEnd === 0) { e.preventDefault(); hh.focus(); }
   });
-  dd.addEventListener("keydown", (e) => {
-    if (e.key === "Backspace" && dd.value === "") { e.preventDefault(); go(mo); }
-  });
-  mo.addEventListener("keydown", (e) => {
-    if (e.key === "Backspace" && mo.value === "") { e.preventDefault(); go(yy); }
-  });
-  [yy, mo, dd, hh, mm].forEach((x) => x.addEventListener("focus", () => x.select()));
-  dwrap.addEventListener("mousedown", (e) => { if (e.target === dwrap) { e.preventDefault(); yy.focus(); } });
+  [hh, mm].forEach((x) => x.addEventListener("focus", () => x.select()));
   wrap.addEventListener("mousedown", (e) => { if (e.target === wrap) { e.preventDefault(); hh.focus(); } });
+  date.addEventListener("change", fire);
 
   const time = () => (hh.value.length === 2 && mm.value.length === 2 ? `${hh.value}:${mm.value}` : "");
-  // 연·월·일이 모두 맞을 때만 YYYY-MM-DD 를 준다 (2월 30일 같은 날짜는 빈 값)
-  const dateVal = () => {
-    if (yy.value.length !== 4 || !mo.value || !dd.value) return "";
-    const y = Number(yy.value);
-    const m = Number(mo.value);
-    const d = Number(dd.value);
-    if (m < 1 || m > 12 || d < 1 || d > new Date(y, m, 0).getDate()) return "";
-    return `${yy.value}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-  };
-  const setParts = (v) => {
-    const [y = "", m = "", d = ""] = v ? v.split("-") : [];
-    yy.value = y;
-    mo.value = m;
-    dd.value = d;
-  };
   return {
     // 날짜와 시각이 모두 있을 때만 값을 준다
-    get() { return dateVal() && time() ? `${dateVal()} ${time()}` : ""; },
-    date() { return dateVal(); },
+    get() { return date.value && time() ? `${date.value} ${time()}` : ""; },
+    date() { return date.value; },
     hm() { return time(); },
-    setDate(d) { setParts(d || ""); },
+    setDate(d) { date.value = d || ""; },
     // 날짜·시각 중 무엇이 비었는지: "" (다 있음 또는 다 비었음), "date", "time", "both"
     missing() {
       const t = Boolean(time());
-      const dv = dateVal();
-      if (dv && t) return "";
-      const anyDate = yy.value || mo.value || dd.value;
-      if (!anyDate && !t && !hh.value && !mm.value) return "both";
-      return dv ? "time" : "date";
+      if (date.value && t) return "";
+      if (!date.value && !date.filled && !t && !hh.value && !mm.value) return "both";
+      return date.value ? "time" : "date";
     },
     set(v) {
-      setParts(v ? v.slice(0, 10) : "");
+      date.value = v ? v.slice(0, 10) : "";
       hh.value = v ? v.slice(11, 13) : "";
       mm.value = v ? v.slice(14, 16) : "";
     },
     lock(on) {
-      [yy, mo, dd, hh, mm].forEach((x) => { x.disabled = on; });
+      date.disabled = on; hh.disabled = on; mm.disabled = on;
       host.classList.toggle("locked", on);
     },
     onChange(fn) { listeners.push(fn); },
@@ -1423,15 +1499,6 @@ function shiftTime(s, minutes) {
 }
 
 // 편명·공항으로 출발 편을 찾는다. 도착 예정이 있으면 도착 뒤 24시간 안의 출발만 채택한다.
-// 조회 결과의 체크인 마감. 공항 체크인 시간을 입력했으면 출발 − 입력값으로 다시 계산한다 (없으면 서버 기본값).
-function checkinDeadlineFor(d, f) {
-  const raw = f.buffer_min.value;
-  const dep = d.estimated || d.scheduled;
-  if (raw === "" || !Number.isFinite(Number(raw)) || !dep) return d.checkin_deadline;
-  const t = new Date(dep.replace(" ", "T"));
-  t.setMinutes(t.getMinutes() - Number(raw));
-  return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
-}
 async function lookupFlight(opts = {}) {
   const f = $("#plan-form").elements;
   const hint = $("#plan-lookup") || document.createElement("p");   // 안내 줄이 화면에 없어도 조회는 한다
@@ -1486,7 +1553,7 @@ async function lookupFlight(opts = {}) {
   }
   if (!lineTouched) setLine(d.line);
   let text = `${d.airline || ""} ${no} · ${hhmm(d.scheduled)} 출발${d.estimated && d.estimated !== d.scheduled ? ` (예상 ${hhmm(d.estimated)})` : ""}`
-    + ` → ${d.destination_name || d.destination || "-"} · ${LINE_NAME[d.line]} 체크인 마감 ${hhmm(checkinDeadlineFor(d, f))}`;
+    + ` → ${d.destination_name || d.destination || "-"} · ${LINE_NAME[d.line]} 체크인 마감 ${hhmm(d.checkin_deadline)}`;
   if (arrive && !best) text += " · 운항 시각을 도착 예정 날짜에 맞춰 넣었습니다.";
   hint.textContent = text;
   hint.className = best || !arrive ? "lookup-hint ok" : "lookup-hint warn";
@@ -1556,7 +1623,7 @@ async function loadPlans() {
       td(p.checkin_deadline ? `${hhmm(p.checkin_deadline)} ${line}` : "-", "",
         p.checkin_deadline ? `${p.checkin_deadline} · ${LINE_NAME[p.line] || ""} 출발 ${p.checkin_min}분 전` : ""),
       td(`${hhmm(p.user_arrival)}${p.arrival_auto ? " 자동" : ""}`, p.arrival_auto ? "auto" : "",
-        `${p.user_arrival}${p.arrival_auto ? ` · 비워 둬서 체크인 마감으로 잡음` : ""}`),
+        `${p.user_arrival}${p.arrival_auto ? ` · 비워 둬서 출발 ${p.buffer_min}분 전으로 잡음` : ""}`),
       td(slack == null ? "-" : `${slack}분`, slack != null && slack < 15 ? "tight" : "", "체크인 마감까지 남는 시간"),
       td(short((p.created_at || "").replace("T", " ")), "muted"),
     );
@@ -1849,13 +1916,13 @@ function renderHours3D(points, info) {
   const max = Math.max(...points.map((p) => p.value), 1);
   const stage = makeStage(host, step * 24, 40);
   const nowHour = kstHour();
-  const colors = { ok: "#34d399", warn: "#fbbf24", bad: "#f87171", muted: "#cbd5e1" };
+  const colors = { ok: "#34d399", warn: "#fbbf24", bad: "#f87171", muted: "#64748b" };
   points.forEach((p) => {
     const ratio = p.value / max;
     const isNow = p.hour === nowHour;
     stage.appendChild(cuboid({
       x: p.hour * step, y: 10, w: size, d: size, h: Math.round(ratio * 120),
-      color: isNow ? "#2f7bd0" : colors[levelOf(ratio).cls], active: isNow,
+      color: isNow ? "#5cc8ff" : colors[levelOf(ratio).cls], active: isNow,
       onHover: () => { info.textContent = `${p.hour}시 · ${p.label}${isNow ? " · 지금" : ""}`; },
     }));
     if (p.hour % 3 === 0) floorLabel(stage, `${p.hour}시`, p.hour * step - 2, 32);
@@ -1922,7 +1989,7 @@ function metric(title, value, sub, lvl) {
 function renderNow(d) {
   const box = $("#fac-now");
   box.replaceChildren();
-  $("#fac-title").textContent = `${d.airport_name} 지금 혼잡`;
+  $("#fac-title").textContent = `${OFFICIAL[d.airport] || `${d.airport_name}공항`} 지금 혼잡`;
   const modeBox = $("#fac-mode");
   modeBox.replaceChildren();
   const info = $("#fac-iso-info");
@@ -2036,7 +2103,7 @@ function renderFacilityList() {
     ? part.data.rows.map((r) => ({ ...r, items: r.business_type, terminal: r.zone, area: null, area_name: null, hours: null }))
     : part.data.rows;
   $("#fac-list-sub").textContent = kac
-    ? `한국공항공사 전국공항 임대계약 정보 — ${d.airport_name} 승객용 매장 ${all.length.toLocaleString()}곳`
+    ? `한국공항공사 전국공항 임대계약 정보 — ${OFFICIAL[d.airport] || `${d.airport_name}공항`} 승객용 매장 ${all.length.toLocaleString()}곳`
       + (part.data.hidden_business ? ` (화물·사무실 등 업무시설 ${part.data.hidden_business}곳 제외)` : "")
       + ". 구역·층은 임대 위치 글자에서 읽은 값이고, 운영 시간은 이 자료에 없습니다."
     : `인천국제공항공사 상업시설 정보 ${all.length.toLocaleString()}곳. 종류·터미널·층은 이름과 위치 글자에서 읽은 값입니다.`;

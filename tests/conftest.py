@@ -18,3 +18,11 @@ def reset_traffic_state():
     from app.tools import traffic
     traffic._expect_state.update(path=None, fail_until=0.0, error=None)
     yield
+
+
+@pytest.fixture(autouse=True)
+def fixed_today(monkeypatch):
+    """테스트 날짜를 2026-11-19(목)로 고정한다. 운항 자료 범위(오늘 −3일 ~ +6일) 판단이 실행하는 날에 따라 바뀌지 않게."""
+    from app.tools import flights
+    monkeypatch.setattr(flights, "today_kst", lambda: "20261119")
+    yield

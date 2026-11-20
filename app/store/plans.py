@@ -3,13 +3,12 @@
 계산식
 - 출발 = 편명 조회로 받은 시각(예상 출발 우선). 사용자가 직접 고친 항공기 출발 시간(dep_manual)이 있으면 그 값을 쓴다.
 - 노선(국내선/국제선)은 사용자가 고른다. 편명 조회로 목적지를 알면 맞는지 확인하고, 다르면 저장하지 않는다.
-- 공항 체크인 시간(분) = 입력값. 비우면 국내선 60분 · 국제선 120분 (app.checkin 기본값)
-- 체크인 마감 = 출발 − 공항 체크인 시간
-- 권장 도착 = 체크인 마감
+- 체크인 마감 = 출발 − 공항·노선별 마감 분 (app.checkin: 국내선 30분, 국제선 60분)
+- 준비 시간(공항에 출발 몇 분 전 도착할지) = 입력값, 없으면 국내선 60분 · 국제선 120분
+- 권장 도착 = 출발 − 준비 시간 (체크인 마감보다 늦을 수 없다)
 - 내 공항 도착 예정 = 입력값, 없으면 권장 도착
-- 여유 = 체크인 마감 − 내 공항 도착 예정 (화면 표시값)
 - 조건: 내 도착 ≤ 체크인 마감. 아니면 저장하지 않는다 (CONDITION_NOT_MET).
-  같은 날 준비 구간이 겹치면 경고한다.
+  권장 도착보다 늦지만 마감 전이면 저장하고 경고한다. 같은 날 준비 구간이 겹쳐도 경고한다.
 """
 from datetime import datetime, timedelta
 
@@ -57,6 +56,25 @@ def _time(value, name):
 LINE_NAME = {"domestic": "국내선", "international": "국제선"}
 
 
+def deadline_of(departure, buffer_min):
+    """체크인 마감 = 출발 − 공항 체크인 시간(분)."""
+    return (datetime.strptime(departure, FMT) - timedelta(minutes=int(buffer_min))).strftime(FMT)
+
+
+def _fresh(row):
+    """예전 방식(항공사 고정 30·60분)으로 저장된 계획도 '출발 − 체크인 시간'으로 다시 계산해 보여 준다."""
+    if not row:
+        return row
+    row = dict(row)
+    dep = row.get("estimated") or row.get("scheduled")
+    if dep and row.get("buffer_min") is not None:
+        row["checkin_deadline"] = deadline_of(dep, row["buffer_min"])
+        row["checkin_min"] = row["buffer_min"]
+        row["arrive_by"] = row["checkin_deadline"]
+    return row
+DEFAULT_BUFFER = {"domestic": 60, "international": 120}
+
+
 def build(data, lookup=None):
     """입력과 편명 조회 결과로 저장할 한 줄과 경고를 만든다. lookup: {scheduled, estimated, destination} 또는 None."""
     missing = [label for key, label in (("title", "제목"), ("airport", "공항"), ("flight_no", "편명"),
@@ -91,19 +109,23 @@ def build(data, lookup=None):
     else:
         raise PlanError("MISSING", "도착 뒤 24시간 안에 출발 편을 찾지 못했습니다. 항공기 출발 시간을 직접 넣어 주십시오.")
     try:
-        buffer_min = checkin.minutes(line, data.get("buffer_min"))   # 입력이 없으면 노선별 기본값
+        raw_buffer = data.get("buffer_min")
+        buffer_min = DEFAULT_BUFFER[line] if raw_buffer in (None, "") else int(raw_buffer)
     except (TypeError, ValueError):
-        raise PlanError("BAD_VALUE", "공항 체크인 시간은 분 단위 숫자입니다.")
+        raise PlanError("BAD_VALUE", "준비 시간은 분 단위 숫자입니다.")
     if not 0 <= buffer_min <= 600:
-        raise PlanError("BAD_VALUE", "공항 체크인 시간은 0~600분입니다.")
+        raise PlanError("BAD_VALUE", "준비 시간은 0~600분입니다.")
     departure = estimated or scheduled
-    deadline = checkin.deadline(departure, buffer_min)
-    arrive_by = deadline                                       # 권장 도착 = 체크인 마감
+    # 체크인 마감 = 항공기 출발 시간 − 공항 체크인 시간(분). 사용자가 넣은 값을 쓰고, 비우면 국내선 60 · 국제선 120분.
+    # (공항·항공사마다 달라 고정값으로 정하지 않는다.)
+    deadline = deadline_of(departure, buffer_min)
+    arrive_by = deadline
     auto = arrival is None
     arrival = arrival or arrive_by
     warns = []
     if datetime.strptime(arrival, FMT) > datetime.strptime(deadline, FMT):
-        raise PlanError("CONDITION_NOT_MET", f"도착 예정 {arrival[11:]}이 체크인 마감 {deadline[11:]}보다 늦습니다.")
+        raise PlanError("CONDITION_NOT_MET", f"도착 예정 {arrival[11:]}이 체크인 마감 {deadline[11:]}"
+                                             f"(출발 {departure[11:]} − 체크인 {buffer_min}분)보다 늦습니다.")
     row = {"title": str(data["title"]).strip(), "memo": (str(data.get("memo") or "").strip() or None),
            "airport": airport, "flight_no": flight_no,
            "flight_date": departure[:10], "destination": destination, "line": line,
@@ -136,6 +158,7 @@ class PlanStore:
         for r in rows:
             if r["id"] == exclude_id:
                 continue
+            r = _fresh(r)
             dep_r = r["estimated"] or r["scheduled"]
             dep_new = row["estimated"] or row["scheduled"]
             if overlaps(row["arrive_by"], dep_new, r["arrive_by"], dep_r):
@@ -159,11 +182,11 @@ class PlanStore:
     def list(self):
         rows = self._run(lambda con: con.execute(
             "SELECT * FROM plans ORDER BY id").fetchall())
-        return [dict(r) for r in rows]
+        return [_fresh(r) for r in rows]
 
     def get(self, pid):
         r = self._run(lambda con: con.execute("SELECT * FROM plans WHERE id = ?", (pid,)).fetchone())
-        return dict(r) if r else None
+        return _fresh(r) if r else None
 
     def update(self, pid, data, lookup=None):
         if self.get(pid) is None:

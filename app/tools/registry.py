@@ -5,6 +5,7 @@
 from dataclasses import dataclass
 from typing import Callable
 
+from app import config
 from app.tools.common import ApiError, fail, ok, scrub
 
 
@@ -45,4 +46,6 @@ def call(name, **kwargs):
     tool = _TOOLS.get(name)
     if tool is None:
         return fail("NOT_FOUND", f"알 수 없는 도구: {name}")
+    if name in config.VERIFY_FAIL_TOOLS:          # 검증용: 도구 하나를 일부러 실패시킨다 (F3007 · NF3003 · F3019)
+        return fail("NETWORK", "요청 실패: 검증을 위해 일부러 실패시킨 도구입니다 (VERIFY_FAIL_TOOLS).")
     return tool.run(**kwargs)

@@ -1,0 +1,106 @@
+{
+  "no": 9,
+  "requirement": "F3009",
+  "item": "재계획과 결과 재사용",
+  "status": "통과",
+  "note": "재계획 1회, 재사용 1건, 같은 입력 재호출 없음",
+  "elapsed_ms": 2494,
+  "evidence": {
+    "run": {
+      "session_id": "verify-11201548-c09-replan",
+      "message": "김포에서 제주 가는 가장 빠른 편, 23시 59분 이후로",
+      "http": 200,
+      "elapsed_ms": 2494,
+      "intent": "departures",
+      "intent_source": "llm",
+      "replans": 1,
+      "steps": "analyze(1723ms) → plan(4ms) → execute(631ms) → [재계획 1: 조건을 만족하는 편이 없음 → 시간 조건을 풀고 같은 날 전체를 다시 조회] → judge(3ms) → plan(4ms) → execute(11ms) → judge(3ms) → enrich(7ms) → respond(3ms)",
+      "tools": [
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "GMP",
+            "date": "20261120",
+            "from_time": "2359",
+            "to_time": "2359",
+            "destination": "CJU"
+          },
+          "role": "candidates",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 391,
+          "count": 0
+        },
+        {
+          "tool": "get_airport_congestion",
+          "args": {
+            "airport": "GMP"
+          },
+          "role": "support",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 217,
+          "count": 1
+        },
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "GMP",
+            "date": "20261120",
+            "destination": "CJU"
+          },
+          "role": "candidates",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 0,
+          "count": 34
+        },
+        {
+          "tool": "get_airport_congestion",
+          "args": {
+            "airport": "GMP"
+          },
+          "reused": true
+        },
+        {
+          "tool": "get_flight_detail",
+          "args": {
+            "airport": "GMP",
+            "flight_no": "KE1143",
+            "date": "20261120",
+            "direction": "departure"
+          },
+          "role": "detail",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 0,
+          "count": 1
+        }
+      ],
+      "answer": "추천: 대한항공 KE1143 — 2026-11-20 15:55 김포국제공항(GMP) 출발 → 제주국제공항(CJU)\n- 상태 탑승장 입장 · 탑승구 9\n- 늦어도 공항 도착 14:55 (출발 15:55에서 짐·보안검색 여유 60분을 뺀 역산)\n- 체크인 마감(추정) 15:25 (국내선 출발 30분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)\n- 참고: 김포국제공항 국내선 지금(15:45) 혼잡 1.0단계 (실시간 값이라 공항 도착 시각의 혼잡과는 다를 수 있음).\n다른 후보:\n- 16:05 제주항공 7C131 → 제주국제공항(CJU) · 탑승장 입장\n- 16:25 대한항공 KE1157 → 제주국제공항(CJU) · 지연\n- 16:35 제주항공 7C133 → 제주국제공항(CJU) · 지연\n판단 기준: 지금(15:48) 이후 출발하는 편 · 목적지 제주국제공항(CJU) · 그중 가장 이른 편\n재계획 1회: 조건을 만족하는 편이 없음 → 시간 조건을 풀고 같은 날 전체를 다시 조회\n가정: 날짜를 말하지 않아 오늘부터 찾았습니다.\n근거 자료: 한국공항공사 실시간 운항 정보, 한국공항공사 공항 혼잡도(실시간), 한국공항공사 실시간 운항 정보(info)\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+      "audit": {
+        "run_index": 0,
+        "status": "normal",
+        "status_label": "이상 없음",
+        "warnings": [],
+        "diagnosis": null
+      },
+      "error": null
+    },
+    "replanned": [
+      {
+        "attempt": 1,
+        "reason": "조건을 만족하는 편이 없음 → 시간 조건을 풀고 같은 날 전체를 다시 조회"
+      }
+    ],
+    "reused": [
+      {
+        "tool": "get_airport_congestion",
+        "args": {
+          "airport": "GMP"
+        }
+      }
+    ],
+    "duplicate_calls": false
+  }
+}

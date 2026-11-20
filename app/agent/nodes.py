@@ -134,13 +134,38 @@ def merge_context(new, prev, message=""):
 
 
 # ---------------- 노드: 분석 ----------------
+# 요청에서 뽑는 조건을 명세 2.2 의 세 묶음으로 나눈다 (F3005).
+#   기준: 계획의 기준점(날짜·시각·출발 공항·편명)  선호: 고르는 방향(목적지·출발지·가장 빠른 편·시설 종류)
+#   제약: 넘으면 안 되는 조건(이 시각 전까지·공항 도착 시각·준비 시간)
+CONDITION_GROUPS = {
+    "기준": ("date", "flexible_date", "from_time", "airport", "flight_no"),
+    "선호": ("destination", "origin", "earliest", "keyword"),
+    "제약": ("to_time", "arrive_airport_at", "buffer_min"),
+}
+
+
+def group_conditions(data):
+    """조건을 기준·선호·제약으로 묶고, 말하지 않아 비워 둔 항목 이름을 함께 돌려준다 (임의로 채우지 않는다)."""
+    groups, empty = {}, []
+    for group, keys in CONDITION_GROUPS.items():
+        groups[group] = {}
+        for k in keys:
+            v = data.get(k)
+            if v in (None, False, ""):
+                empty.append(k)
+            else:
+                groups[group][k] = v
+    return groups, empty
+
+
 def analyze(state, emit):
     prev = (state.get("memory") or {}).get("intent")
     it, source, note = extract(state["message"], prev)
     data, inherited = merge_context(it.model_dump(), prev, state["message"])
     shown = {k: v for k, v in data.items() if v not in (None, False, "") and k not in ("intent", "reason")}
+    groups, empty = group_conditions(data)
     emit("intent_analyzed", source=source, intent=data["intent"], reason=data.get("reason"),
-         conditions=shown, inherited=inherited, note=note)
+         conditions=shown, groups=groups, empty=empty, inherited=inherited, note=note)
     return {"intent": data, "intent_source": source, "inherited": inherited, "analysis_note": note}
 
 
@@ -208,7 +233,7 @@ def plan(state, emit):
         elif not base:
             if other_codes:
                 base = _default_base(other_codes) if dep else airports.ICN
-                assume(f"{'출발' if dep else '도착'} 공항을 말하지 않아 {airports.NAMES[base]}({base}) 기준으로 찾았습니다.")
+                assume(f"{'출발' if dep else '도착'} 공항을 말하지 않아 {airports.official(base)}({base}) 기준으로 찾았습니다.")
             elif dep:
                 missing = ("어느 공항에서 출발하는지, 또는 어디로 가는지 알려 주십시오. "
                            "예: '김포 출발 시간표', '센다이 가는 가장 빠른 편'")
@@ -264,7 +289,7 @@ def plan(state, emit):
             if base in airports.CONGESTION_AIRPORTS and kind == "congestion":
                 steps.append({"tool": "get_airport_congestion", "args": {"airport": base}, "role": "info"})
             else:
-                assume(f"{airports.NAMES[base]}은 실시간 혼잡도 API 가 없어 시간대별 이용 흐름으로 보여 드립니다."
+                assume(f"{airports.official(base)}은 실시간 혼잡도 API 가 없어 시간대별 이용 흐름으로 보여 드립니다."
                        if kind == "congestion" else "인천 외 공항은 시간대별 이용 흐름으로 보여 드립니다.")
             steps.append({"tool": "get_hourly_traffic", "args": {"airport": base, "date": date}, "role": "info"})
         ctx.update(base=base, date=date)
@@ -272,7 +297,7 @@ def plan(state, emit):
     elif kind == "facilities":
         base = it.get("airport") or airports.ICN
         if not it.get("airport"):
-            assume("공항을 말하지 않아 인천공항 기준으로 찾았습니다.")
+            assume("공항을 말하지 않아 인천국제공항 기준으로 찾았습니다.")
         if base == airports.ICN:
             args = {"keyword": it.get("keyword")}
             if "입국" in message:
@@ -331,6 +356,9 @@ def evaluate_flights(data, it, ctx, now=None):
     rows = [r for r in data.get("flights") or [] if not codes or r.get(key) in codes]
     now = now or now_kst().replace(tzinfo=None)
     date = ctx.get("date")
+    estimated = bool(data.get("date_estimated"))
+    if estimated and data.get("date"):
+        date = data["date"]          # 같은 요일 운항표로 추정했으면 그 날짜의 시각끼리 비교한다
     criteria, notes = [], []
     threshold = None
     buffer = None
@@ -343,14 +371,14 @@ def evaluate_flights(data, it, ctx, now=None):
             criteria.append(f"공항 도착 {arrive:%H:%M} + 준비 {buffer}분 = {threshold:%H:%M} 이후 출발하는 편")
             if default:
                 notes.append(f"준비 시간은 {'국제선' if kind == 'international' else '국내선'} 기본값 {buffer}분으로 계산했습니다.")
-        elif date == now.strftime("%Y%m%d"):
+        elif date == now.strftime("%Y%m%d") and not estimated:
             threshold = now
             criteria.append(f"지금({now:%H:%M}) 이후 출발하는 편")
-    elif date == now.strftime("%Y%m%d") and not it.get("from_time"):
+    elif date == now.strftime("%Y%m%d") and not it.get("from_time") and not estimated:
         criteria.append(f"지금({now:%H:%M}) 이후 도착 예정인 편")
     if codes:
-        criteria.append("목적지 " + ", ".join(f"{airports.name_of(c)}({c})" for c in codes) if dep
-                        else "출발지 " + ", ".join(f"{airports.name_of(c)}({c})" for c in codes))
+        criteria.append("목적지 " + ", ".join(f"{airports.official(c, airports.name_of(c))}({c})" for c in codes) if dep
+                        else "출발지 " + ", ".join(f"{airports.official(c, airports.name_of(c))}({c})" for c in codes))
     if it.get("earliest"):
         criteria.append("그중 가장 이른 편")
 
@@ -359,18 +387,31 @@ def evaluate_flights(data, it, ctx, now=None):
         when = _parse(r.get("estimated") or r.get("scheduled"))
         remark = r.get("remark") or ""
         brief = {"flight_no": r.get("flight_no"), "airline": r.get("airline"), "time": _hm(r.get("estimated") or r.get("scheduled"))}
-        if re.search(r"결항|cancel", remark, re.IGNORECASE):
+        if when is None:
+            # 판단에 필요한 시각이 비어 있으면 값을 지어내지 않고 판단하지 않은 채 제외한다 (F3003)
+            rejected.append({**brief, "reason": f"{'출발' if dep else '도착'} 시각 정보 없음(판단하지 않음)"})
+        elif re.search(r"결항|cancel", remark, re.IGNORECASE):
             rejected.append({**brief, "reason": "결항"})
         elif dep and threshold and when and when < threshold:
             rejected.append({**brief, "reason": "준비 시간 부족" if it.get("arrive_airport_at") else "이미 출발 시각이 지남"})
-        elif dep and re.search(r"출발|이륙|departed", remark, re.IGNORECASE) and date == now.strftime("%Y%m%d"):
+        elif dep and re.search(r"출발|이륙|departed", remark, re.IGNORECASE) and date == now.strftime("%Y%m%d") and not estimated:
             rejected.append({**brief, "reason": "이미 출발함"})
         else:
             candidates.append(r)
     candidates.sort(key=lambda r: r.get("estimated") or r.get("scheduled") or "")
     chosen = candidates[0] if candidates and (it.get("earliest") or codes) else None
+    if estimated and data.get("note"):
+        notes.insert(0, data["note"])
     return {"candidates": candidates, "rejected": rejected, "chosen": chosen, "criteria": criteria,
-            "notes": notes, "buffer": buffer, "matched_rows": len(rows), "date": date}
+            "notes": notes, "buffer": buffer, "matched_rows": len(rows), "date": date, "estimated": estimated,
+            "requested_date": data.get("requested_date") or ctx.get("date")}
+
+
+def reject_reasons(rejected):
+    counts = {}
+    for x in rejected or []:
+        counts[x["reason"]] = counts.get(x["reason"], 0) + 1
+    return counts
 
 
 def judge(state, emit):
@@ -407,13 +448,15 @@ def judge(state, emit):
             nxt = describe_widen(it, replans + 1)
             if nxt and replans < config.REPLAN_LIMIT:
                 return replan(f"조건을 만족하는 편이 없음 → {nxt}")
-            j["limit_reached"] = bool(nxt) and replans >= config.REPLAN_LIMIT
+            j["limit_reached"] = replans >= config.REPLAN_LIMIT
             emit("judged", decision="respond", candidates=0, rejected=len(j["rejected"]),
-                 reason="재계획 상한에 도달" if j["limit_reached"] else "더 넓힐 조건이 없음")
+                 rejected_reasons=reject_reasons(j["rejected"]), criteria=j["criteria"],
+                 reason=f"재계획 상한({config.REPLAN_LIMIT}회)에 도달" if j["limit_reached"] else "더 넓힐 조건이 없음")
             return {"decision": "respond", "judgement": j}
         decision = "enrich" if j["chosen"] else "respond"
         emit("judged", decision=decision, candidates=len(j["candidates"]), rejected=len(j["rejected"]),
-             criteria=j["criteria"], chosen=(j["chosen"] or {}).get("flight_no"))
+             rejected_reasons=reject_reasons(j["rejected"]), criteria=j["criteria"],
+             chosen=(j["chosen"] or {}).get("flight_no"), date_estimated=j["estimated"])
         return {"decision": decision, "judgement": j}
 
     if kind == "flight_detail":
@@ -465,6 +508,7 @@ def _flight_line(r):
     est_txt = f"(예상 {_hm(est)})" if est and est != r.get("scheduled") else ""
     other = r.get("destination_name") if dep else r.get("origin_name")
     code = r.get("destination_code") if dep else r.get("origin_code")
+    other = airports.official(code, other) if code in airports.OFFICIAL else other
     extra = "".join([f" · 탑승구 {r['gate']}" if r.get("gate") else "", f" · {r['terminal']}" if r.get("terminal") else "",
                      f" · 공동운항 {', '.join(r['codeshares'])}" if r.get("codeshares") else ""])
     return (f"{_hm(r.get('scheduled'))}{est_txt} {r.get('airline') or ''} {r.get('flight_no') or ''} "
@@ -488,11 +532,11 @@ def _support_text(results, when):
                 for key, label in (("t1_departure", "T1 출국"), ("t2_departure", "T2 출국")):
                     pct = ratio.get(key)
                     parts.append(f"{label} {row[key]:,}명" + (f"(오늘 최대의 {int(pct * 100)}%)" if pct is not None else ""))
-                return f"참고: {hour}시대 인천공항 예상 인원 " + ", ".join(parts) + "."
+                return f"참고: {hour}시대 인천국제공항 예상 인원 " + ", ".join(parts) + "."
         elif r["tool"] == "get_airport_congestion":
             row = d["rows"][0] if d["rows"] else None
             if row:
-                return (f"참고: {d['airport_name']}공항 국내선 지금({row.get('time') or '-'}) 혼잡 {row.get('level') or '정보 없음'}단계 "
+                return (f"참고: {airports.official(d['airport'])} 국내선 지금({row.get('time') or '-'}) 혼잡 {row.get('level') or '정보 없음'}단계 "
                         "(실시간 값이라 공항 도착 시각의 혼잡과는 다를 수 있음).")
     return None
 
@@ -524,9 +568,9 @@ def _answer_flights(state):
         other = chosen.get("destination_name") if dep else chosen.get("origin_name")
         code = chosen.get("destination_code") if dep else chosen.get("origin_code")
         lines.append(f"추천: {chosen.get('airline') or ''} {chosen.get('flight_no')} — "
-                     f"{_fmt_ymd(ctx.get('date'))} {_hm(chosen.get('scheduled'))} "
-                     + (f"{airports.NAMES[base]}({base}) 출발 → {other or '-'}({code or '-'})" if dep
-                        else f"{other or '-'}({code or '-'}) 출발 → {airports.NAMES[base]}({base}) 도착"))
+                     f"{_fmt_ymd(ctx.get('date'))}{' (추정)' if j.get('estimated') else ''} {_hm(chosen.get('scheduled'))} "
+                     + (f"{airports.official(base)}({base}) 출발 → {airports.official(code, other) or '-'}({code or '-'})" if dep
+                        else f"{airports.official(code, other) or '-'}({code or '-'}) 출발 → {airports.official(base)}({base}) 도착"))
         status = [f"상태 {chosen.get('remark') or '예정'}"]
         if chosen.get("estimated") and chosen.get("estimated") != chosen.get("scheduled"):
             status.append(f"예상 {_hm(chosen['estimated'])}")
@@ -538,10 +582,13 @@ def _answer_flights(state):
         lines.append("- " + " · ".join(status))
         when = _parse(sch)
         if dep and when and j.get("buffer"):
-            close = checkin.deadline(when.strftime(FMT), j["buffer"])
+            # 체크인 마감·공항 도착 시각은 공공데이터로 확인할 수 없는 값이라 지어내지 않고 출발 시각에서 역산한다 (F3008)
+            line = checkin.line_of(base, chosen.get("destination_code"))
+            close = checkin.deadline(when.strftime(FMT), base, line)
             latest = when - timedelta(minutes=j["buffer"])
-            lines.append(f"- 체크인 마감 {close[11:]} (출발 {when:%H:%M} − 준비 {j['buffer']}분, "
-                         f"항공사·노선마다 더 이를 수 있음)")
+            lines.append(f"- 늦어도 공항 도착 {latest:%H:%M} (출발 {when:%H:%M}에서 짐·보안검색 여유 {j['buffer']}분을 뺀 역산)")
+            lines.append(f"- 체크인 마감(추정) {close[11:]} ({'국제선' if line == 'international' else '국내선'} 출발 "
+                         f"{checkin.minutes(base, line)}분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)")
             support = _support_text(state.get("results") or [], latest)
             if support:
                 lines.append("- " + support)
@@ -550,7 +597,7 @@ def _answer_flights(state):
             lines.append("다른 후보:")
             lines += [f"- {_flight_line(c)}" for c in others]
     elif cands:
-        lines.append(f"{airports.NAMES[base]}({base}) {_fmt_ymd(ctx.get('date'))} {'출발' if dep else '도착'} "
+        lines.append(f"{airports.official(base)}({base}) {_fmt_ymd(ctx.get('date'))} {'출발' if dep else '도착'} "
                      f"{len(cands)}편 (이른 순)")
         lines += [f"- {_flight_line(c)}" for c in cands[:10]]
         if len(cands) > 10:
@@ -564,10 +611,13 @@ def _answer_flights(state):
     if j.get("criteria"):
         lines.append("판단 기준: " + " · ".join(j["criteria"]))
     if j.get("rejected"):
-        counts = {}
-        for x in j["rejected"]:
-            counts[x["reason"]] = counts.get(x["reason"], 0) + 1
-        lines.append("제외: " + ", ".join(f"{k} {v}편" for k, v in counts.items()))
+        # 제외한 후보는 사유와 편명을 함께 밝힌다 (F3011). 사유마다 앞의 3편까지 적는다.
+        parts = []
+        for reason, n in reject_reasons(j["rejected"]).items():
+            some = [x for x in j["rejected"] if x["reason"] == reason][:3]
+            names = ", ".join(f"{x.get('flight_no') or '-'} {x.get('time') or '-'}" for x in some)
+            parts.append(f"{reason} {n}편({names}{' 외' if n > len(some) else ''})")
+        lines.append("제외한 후보: " + "; ".join(parts))
     for n in j.get("notes") or []:
         lines.append(n)
     if j.get("detail") and not j["detail"].get("ok"):
@@ -588,14 +638,14 @@ def _answer_info(state):
             continue
         d, tool = r["data"], r["tool"]
         if tool == "search_flight":
-            lines.append(f"{d['airport_name']}({d['airport']}) {_fmt_ymd(d['date'])} {d['flight_no']} 조회 결과 {d['count']}건")
+            lines.append(f"{airports.official(d['airport'])}({d['airport']}) {_fmt_ymd(d['date'])} {d['flight_no']} 조회 결과 {d['count']}건")
             lines += [f"- {'출발' if f.get('direction') == 'departure' else '도착'} {_flight_line(f)}" for f in d["flights"][:5]]
             if d.get("note"):
                 lines.append(d["note"])
         elif tool == "get_incheon_passenger_forecast":
             hourly = [x for x in d["rows"] if x.get("hour") is not None]
             now_row = next((x for x in hourly if x["hour"] == d.get("current_hour")), None)
-            lines.append(f"인천공항 {'오늘' if d['selectdate'] == '0' else '내일'} 시간대별 예상 승객 (참고용)")
+            lines.append(f"인천국제공항 {'오늘' if d['selectdate'] == '0' else '내일'} 시간대별 예상 승객 (참고용)")
             if now_row:
                 ratio = now_row.get("ratio") or {}
                 lines.append(f"- 지금({now_row['hour']}시대): T1 출국 {now_row['t1_departure']:,}명, T2 출국 {now_row['t2_departure']:,}명 "
@@ -607,20 +657,20 @@ def _answer_info(state):
         elif tool == "get_airport_congestion":
             row = d["rows"][0] if d["rows"] else None
             if row:
-                lines.append(f"{d['airport_name']}공항 국내선 지금 혼잡 ({row.get('time') or '-'} 기준, 제공기관 단계)")
+                lines.append(f"{airports.official(d['airport'])} 국내선 지금 혼잡 ({row.get('time') or '-'} 기준, 제공기관 단계)")
                 lines.append(f"- 전체 {row.get('level') or '-'}단계")
                 for seg in d.get("segments") or []:
                     if row.get(seg["key"]) is not None:
                         lines.append(f"- {seg['label']}: {row[seg['key']]}단계")
             else:
-                lines.append(f"{d['airport_name']}공항: 지금 제공되는 실시간 혼잡도가 없습니다.")
+                lines.append(f"{airports.official(d['airport'])}: 지금 제공되는 실시간 혼잡도가 없습니다.")
         elif tool == "get_hourly_traffic":
             unit = d["unit"]
             busy = sorted(d["rows"], key=lambda x: x["value"], reverse=True)[:3]
             now_h = now_kst().hour
             now_row = next((x for x in d["rows"] if x["hour"] == now_h), None)
             label = "예상 탑승객" if d["source"] == "expected_passengers" else "출발·도착 편수"
-            lines.append(f"{d['airport_name']}공항 {_fmt_ymd(d['date'])} 시간대별 {label}")
+            lines.append(f"{airports.official(d['airport'])} {_fmt_ymd(d['date'])} 시간대별 {label}")
             if now_row and d["date"] == _today():
                 lines.append(f"- 지금({now_h}시대): {now_row['value']:,}{unit}")
             if busy and busy[0]["value"]:
@@ -632,15 +682,17 @@ def _answer_info(state):
             lines.append(d["note"])
         elif tool == "get_incheon_facilities":
             kw = r["args"].get("keyword")
-            lines.append(f"인천공항 {kw + ' 관련 ' if kw else ''}시설 {d['count']}곳" + (f" (처음 8곳)" if d["count"] > 8 else ""))
+            lines.append(f"인천국제공항 {kw + ' 관련 ' if kw else ''}시설 {d['count']}곳" + (f" (처음 8곳)" if d["count"] > 8 else ""))
             for x in d["rows"][:8]:
                 bits = [x.get("location") or "위치 정보 없음", x.get("area_name"), x.get("hours")]
                 lines.append(f"- {x.get('name') or '-'}: " + " · ".join(b for b in bits if b))
             if d["count"] > 8:
                 lines.append("'공항 시설' 화면에서 층별로 모두 볼 수 있습니다.")
+            if d.get("empty"):
+                lines.append(d["note"])
         elif tool == "get_commercial_facilities":
             kw = r["args"].get("keyword")
-            lines.append(f"{d['airport_name']}공항 {kw + ' 관련 ' if kw else ''}매장 {d['count']}곳" + (" (처음 8곳)" if d["count"] > 8 else ""))
+            lines.append(f"{airports.official(d['airport'])} {kw + ' 관련 ' if kw else ''}매장 {d['count']}곳" + (" (처음 8곳)" if d["count"] > 8 else ""))
             for x in d["rows"][:8]:
                 lines.append(f"- {x.get('name') or '-'} ({x.get('business_type') or x.get('category')}): {x.get('location') or '위치 정보 없음'}")
             if d["count"] > 8:
@@ -669,7 +721,7 @@ def respond(state, emit):
         flights = ([j["chosen"]] if j.get("chosen") else []) + \
                   [c for c in (j.get("candidates") or []) if not j.get("chosen") or c.get("flight_no") != j["chosen"].get("flight_no")]
         if flights:
-            cards = {"airport": ctx.get("base"), "airport_name": airports.NAMES.get(ctx.get("base"), ""),
+            cards = {"airport": ctx.get("base"), "airport_name": airports.official(ctx.get("base")),
                      "date": ctx.get("date"), "chosen": (j.get("chosen") or {}).get("flight_no"),
                      "flights": flights[:5]}
         summary = (f"{kind} {ctx.get('base')}→{','.join(ctx.get('other_codes') or []) or '전체'} {ctx.get('date')} "
@@ -679,7 +731,7 @@ def respond(state, emit):
         primary = next((r for r in state.get("results") or [] if r.get("role") == "candidates" and r["ok"]), None)
         if kind == "flight_detail" and primary and primary["data"]["flights"]:
             d = primary["data"]
-            cards = {"airport": d["airport"], "airport_name": d["airport_name"], "date": d["date"],
+            cards = {"airport": d["airport"], "airport_name": airports.official(d["airport"]), "date": d["date"],
                      "chosen": d["flight_no"], "flights": d["flights"][:5]}
         summary = f"{kind} {(state.get('ctx') or {}).get('base') or ''}"
     log = state.get("replan_log") or []

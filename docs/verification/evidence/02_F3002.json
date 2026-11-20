@@ -1,0 +1,86 @@
+{
+  "no": 2,
+  "requirement": "F3002",
+  "item": "기준 날짜 기본값, 요청·조회 기준 차이 명시",
+  "status": "통과",
+  "note": "기본값=오늘(20261120). 범위 밖 날짜는 같은 요일 날짜로 조회하고 note·답변에 '추정'을 밝힘",
+  "elapsed_ms": 7275,
+  "evidence": {
+    "today": "20261120",
+    "no_date": {
+      "ok": true,
+      "requested_date": "20261120",
+      "date": "20261120",
+      "date_estimated": false,
+      "count": 80,
+      "note": null,
+      "error": null
+    },
+    "future": {
+      "ok": true,
+      "requested_date": "20261220",
+      "date": "20261122",
+      "date_estimated": true,
+      "count": 173,
+      "note": "요청한 2026-12-20(일)은 운항 자료 제공 범위(오늘 −3일 ~ +6일) 밖이라 같은 요일인 2026-11-22(일) 운항표로 대신 조회했습니다 (추정 — 실제 운항 시각은 다를 수 있음).",
+      "error": null
+    },
+    "past": {
+      "ok": true,
+      "requested_date": "20261031",
+      "date": "20261121",
+      "date_estimated": true,
+      "count": 178,
+      "note": "요청한 2026-10-31(토)은 운항 자료 제공 범위(오늘 −3일 ~ +6일) 밖이라 같은 요일인 2026-11-21(토) 운항표로 대신 조회했습니다 (추정 — 실제 운항 시각은 다를 수 있음).",
+      "error": null
+    },
+    "chat": {
+      "session_id": "verify-11201548-c02-future",
+      "message": "12월 20일 김포에서 제주 가는 가장 빠른 편",
+      "http": 200,
+      "elapsed_ms": 4329,
+      "intent": "departures",
+      "intent_source": "llm",
+      "replans": 0,
+      "steps": "analyze(2760ms) → plan(4ms) → execute(1127ms) → judge(5ms) → enrich(10ms) → respond(4ms)",
+      "tools": [
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "GMP",
+            "date": "20261220",
+            "destination": "CJU"
+          },
+          "role": "candidates",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 1116,
+          "count": 103
+        },
+        {
+          "tool": "get_flight_detail",
+          "args": {
+            "airport": "GMP",
+            "flight_no": "RS6347",
+            "date": "20261220",
+            "direction": "departure"
+          },
+          "role": "detail",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 1,
+          "count": 1
+        }
+      ],
+      "answer": "추천: 에어서울 RS6347 — 2026-12-20 (추정) 06:00 김포국제공항(GMP) 출발 → 제주국제공항(CJU)\n- 상태 예정 · 탑승구 미배정(출발 전 다시 확인)\n- 늦어도 공항 도착 05:00 (출발 06:00에서 짐·보안검색 여유 60분을 뺀 역산)\n- 체크인 마감(추정) 05:30 (국내선 출발 30분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)\n다른 후보:\n- 06:05 진에어 LJ6301 → 제주국제공항(CJU) · 예정\n- 06:10 파라타항공 WE6501 → 제주국제공항(CJU) · 예정\n- 06:15 아시아나항공 OZ8905 → 제주국제공항(CJU) · 예정\n판단 기준: 목적지 제주국제공항(CJU) · 그중 가장 이른 편\n요청한 2026-12-20(일)은 운항 자료 제공 범위(오늘 −3일 ~ +6일) 밖이라 같은 요일인 2026-11-22(일) 운항표로 대신 조회했습니다 (추정 — 실제 운항 시각은 다를 수 있음).\n근거 자료: 한국공항공사 실시간 운항 정보, 한국공항공사 운항 목록 (탑승구는 당일 실시간 자료에만 있음)\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+      "audit": {
+        "run_index": 0,
+        "status": "normal",
+        "status_label": "이상 없음",
+        "warnings": [],
+        "diagnosis": null
+      },
+      "error": null
+    }
+  }
+}

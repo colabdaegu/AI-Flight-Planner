@@ -1,0 +1,68 @@
+{
+  "no": 22,
+  "requirement": "F3019",
+  "item": "실행 단계·재계획 지점·처리 중·실패·키 누락 안내",
+  "status": "통과",
+  "note": "실행 순서·재계획 지점·처리 중·도구 실패·키 누락 안내를 이벤트와 화면 캡처 4장으로 확인",
+  "elapsed_ms": 1612,
+  "evidence": {
+    "replan_trace_steps": "analyze(1474ms) → plan(4ms) → execute(446ms) → [재계획 1: 조건을 만족하는 편이 없음 → 1일 뒤 날짜로 넓혀 다시 조회] → judge(3ms) → plan(4ms) → execute(388ms) → [재계획 2: 조건을 만족하는 편이 없음 → 2일 뒤 날짜로 넓혀 다시 조회] → judge(4ms) → plan(4ms) → execute(407ms) → [재계획 3: 조건을 만족하는 편이 없음 → 3일 뒤 날짜로 넓혀 다시 조회] → judge(3ms) → plan(4ms) → execute(419ms) → judge(3ms) → respond(3ms)",
+    "toolfail_steps": "analyze(1352ms) → plan(4ms) → execute(613ms) → judge(3ms) → enrich(652ms) → respond(4ms)",
+    "nokey": {
+      "session_id": "verify-11201548-c22-nokey",
+      "message": "김포 출발 시간표 보여줘",
+      "http": 200,
+      "elapsed_ms": 1611,
+      "intent": "departures",
+      "intent_source": "llm",
+      "replans": 0,
+      "steps": "analyze(1517ms) → plan(4ms) → execute(15ms) → judge(3ms) → respond(3ms)",
+      "tools": [
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "GMP",
+            "date": "20261120"
+          },
+          "role": "candidates",
+          "ok": false,
+          "code": "NO_KEY",
+          "elapsed_ms": 0,
+          "count": null
+        },
+        {
+          "tool": "get_airport_congestion",
+          "args": {
+            "airport": "GMP"
+          },
+          "role": "support",
+          "ok": false,
+          "code": "NO_KEY",
+          "elapsed_ms": 0,
+          "count": null
+        }
+      ],
+      "answer": "조회 실패: DATA_GO_KR_KEY 가 설정되지 않았습니다. .env 를 확인하십시오.\n설정 안내: 프로젝트 폴더의 .env 에 DATA_GO_KR_KEY 를 넣고 서버를 다시 켜십시오.\n가정: 날짜를 말하지 않아 오늘부터 찾았습니다.\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+      "audit": {
+        "run_index": 0,
+        "status": "normal",
+        "status_label": "이상 없음",
+        "warnings": [],
+        "diagnosis": null
+      },
+      "error": null
+    },
+    "screen_code": {
+      "재계획 칩/색": true,
+      "처리 중 표시": true,
+      "키 누락 배너": true,
+      "도구 실패 배너": true
+    },
+    "screens": [
+      "22_replan.png",
+      "22_pending.png",
+      "22_toolfail.png",
+      "22_nokey.png"
+    ]
+  }
+}

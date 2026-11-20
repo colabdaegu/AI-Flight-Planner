@@ -1,0 +1,53 @@
+{
+  "no": 6,
+  "requirement": "F3006",
+  "item": "계획 구성, 도구 불필요 요청, 그래프 노드",
+  "status": "통과",
+  "note": "인사 → 계획 steps=[] · 도구 0회. 출발 편 → search_departures(+보조) 순서. 그래프 노드 = AGENT.md 단계 (graph.md)",
+  "elapsed_ms": 1296,
+  "evidence": {
+    "greeting": {
+      "planned": {
+        "attempt": 0,
+        "steps": [],
+        "followups": [],
+        "missing": null,
+        "assumptions": []
+      },
+      "tool_calls": 0,
+      "answer": "안녕하십니까. 이런 질문에 답할 수 있습니다.\n- 출발 편 찾기: '센다이 가는 가장 빠른 편', '내일 김포에서 제주 오후 3시 이후'\n- 공항 도착 시각 기준 판단: '인천공항에 9시 도착하면 탈 수 있는 오사카행'\n- 도착 편: '인천 도착하는 나리타발 항공편'\n- 편명 조회: 'KE123 지금 어디야', 'OZ102 탑승구'\n- 혼잡도·예상 승객: '김포 혼잡도', '인천 지금 붐벼?'\n- 시설: '인천공항 출국장 약국', '면세점 위치'\n같은 대화 안에서는 '내일은?', '김포에서는?'처럼 바꾼 조건만 말해도 이어서 찾습니다."
+    },
+    "trip_plan": {
+      "attempt": 0,
+      "steps": [
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "GMP",
+            "date": "20261121",
+            "from_time": "1500",
+            "destination": "CJU"
+          }
+        }
+      ],
+      "followups": [
+        "get_flight_detail"
+      ],
+      "missing": null,
+      "assumptions": []
+    },
+    "trip_tool_order": [
+      "search_departures",
+      "get_flight_detail"
+    ],
+    "graph_mermaid": "---\nconfig:\n  flowchart:\n    curve: linear\n---\ngraph TD;\n\t__start__([<p>__start__</p>]):::first\n\tanalyze(analyze)\n\tplan(plan)\n\texecute(execute)\n\tjudge(judge)\n\tenrich(enrich)\n\trespond(respond)\n\t__end__([<p>__end__</p>]):::last\n\t__start__ --> analyze;\n\tanalyze --> plan;\n\tenrich --> respond;\n\texecute --> judge;\n\tjudge -.-> enrich;\n\tjudge -. &nbsp;replan&nbsp; .-> plan;\n\tjudge -.-> respond;\n\tplan --> execute;\n\trespond --> __end__;\n\tclassDef default fill:#f2f0ff,line-height:1.2\n\tclassDef first fill-opacity:0\n\tclassDef last fill:#bfb6fc\n    %% analyze: 의도 분석\n    %% plan: 계획 수립\n    %% execute: Tool 호출\n    %% judge: 결과 통합·제약 판단\n    %% enrich: 상세 보강\n    %% respond: 최종 응답",
+    "design_stages": [
+      "analyze",
+      "plan",
+      "execute",
+      "judge",
+      "enrich",
+      "respond"
+    ]
+  }
+}

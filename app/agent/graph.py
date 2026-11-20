@@ -43,6 +43,10 @@ class AgentState(TypedDict, total=False):
 NODES = (("analyze", nodes.analyze), ("plan", nodes.plan), ("execute", nodes.execute),
          ("judge", nodes.judge), ("enrich", nodes.enrich), ("respond", nodes.respond))
 NEXT = {"analyze": "plan", "plan": "execute", "execute": "judge", "enrich": "respond", "respond": None}
+# 설계 문서(docs/AGENT.md 2장)의 실행 단계 = 그래프 노드. 명세 4.2: 분석 → 계획 → 실행 → 판단 → 응답
+STAGES = tuple(name for name, _ in NODES)
+STAGE_LABELS = {"analyze": "의도 분석", "plan": "계획 수립", "execute": "Tool 호출", "judge": "결과 통합·제약 판단",
+                "enrich": "상세 보강", "respond": "최종 응답"}
 
 
 def _step(name, fn, emit):
@@ -71,6 +75,21 @@ def build_graph(emit):
     g.add_edge("enrich", "respond")
     g.add_edge("respond", END)
     return g.compile()
+
+
+def structure():
+    """그래프 구조를 Mermaid 글로 돌려준다 (명세 4.2 '그래프 구조 출력'). langgraph 가 있으면 컴파일한 그래프에서 뽑는다."""
+    try:
+        text = build_graph(lambda *a, **k: None).get_graph().draw_mermaid()
+    except Exception:                                # langgraph 가 없거나 그리기를 못 하면 같은 구조를 직접 적는다
+        lines = ["graph TD;", "    __start__([__start__]) --> analyze;"]
+        lines += [f"    {a} --> {b};" for a, b in (("analyze", "plan"), ("plan", "execute"), ("execute", "judge"),
+                                                     ("enrich", "respond"))]
+        lines += ["    judge -. replan .-> plan;", "    judge -. enrich .-> enrich;", "    judge -. respond .-> respond;",
+                  "    respond --> __end__([__end__]);"]
+        text = "\n".join(lines)
+    labels = "\n".join(f"    %% {k}: {v}" for k, v in STAGE_LABELS.items())
+    return text.rstrip() + "\n" + labels
 
 
 def run_plain(state, emit):
@@ -131,3 +150,7 @@ def run_agent(message, session_id, trace, run_id=None):
     return {"answer": final.get("answer") or nodes.HELP, "cards": final.get("cards"),
             "intent": intent.get("intent"), "intent_source": final.get("intent_source"),
             "replans": final.get("replans", 0)}
+
+
+if __name__ == "__main__":          # python -m app.agent.graph  → 그래프 구조(Mermaid) 출력
+    print(structure())

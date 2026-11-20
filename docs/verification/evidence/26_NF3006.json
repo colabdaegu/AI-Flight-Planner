@@ -1,0 +1,46 @@
+{
+  "no": 26,
+  "requirement": "NF3006 · NF3007",
+  "item": "모듈 분리, 출처·이용 조건 기록",
+  "status": "통과",
+  "note": "web/ ↔ app/ 분리, Agent 7개·Tool 11개 파일. README 에 출처·한도·이용 조건",
+  "elapsed_ms": 0,
+  "evidence": {
+    "dirs": [
+      "web",
+      "app/agent",
+      "app/tools",
+      "app/api",
+      "app/store"
+    ],
+    "agent_files": [
+      "__init__.py",
+      "cancel.py",
+      "constraints.py",
+      "graph.py",
+      "llm.py",
+      "memory.py",
+      "nodes.py"
+    ],
+    "tool_files": [
+      "__init__.py",
+      "airport_info.py",
+      "commercial.py",
+      "common.py",
+      "congestion.py",
+      "facilities.py",
+      "flights.py",
+      "passenger.py",
+      "places.py",
+      "registry.py",
+      "traffic.py"
+    ],
+    "readme_terms": {
+      "출처": true,
+      "이용 조건": true,
+      "한도": true,
+      "공공데이터포털": true,
+      "약관": true
+    }
+  }
+}

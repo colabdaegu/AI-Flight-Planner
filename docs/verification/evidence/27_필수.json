@@ -1,0 +1,41 @@
+{
+  "no": 27,
+  "requirement": "필수",
+  "item": "제출 전 점검",
+  "status": "통과",
+  "note": "필수 F3001~F3019 동작, 제출물 모두 있음, 화면 캡처 9장",
+  "elapsed_ms": 0,
+  "evidence": {
+    "deliverables": {
+      "요구사항 정의서(기획 검증 포함)": true,
+      "Agent 설계 문서": true,
+      "Tool 정의서": true,
+      "API 명세서": true,
+      "실행 로그 샘플": true,
+      "README": true,
+      "검증 결과": true,
+      "대표 시나리오 기록": true,
+      "셀프 체크리스트": true,
+      "기획 검증 기록": true,
+      "화면 캡처": true
+    },
+    "made_by_this_run": [
+      "검증 결과",
+      "기획 검증 기록",
+      "셀프 체크리스트"
+    ],
+    "screens_needed": [
+      "20_plan_after.png",
+      "20_plan_before.png",
+      "21_docs_paths.png",
+      "21_docs_schemas.png",
+      "21_network.png",
+      "22_nokey.png",
+      "22_pending.png",
+      "22_replan.png",
+      "22_toolfail.png"
+    ],
+    "screens_missing": [],
+    "failed_required_items": []
+  }
+}

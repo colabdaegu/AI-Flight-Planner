@@ -1,0 +1,61 @@
+{
+  "no": 4,
+  "requirement": "F3004",
+  "item": "보조 정보 이름·주소·링크, 결과 없음 형식",
+  "status": "통과",
+  "note": "결과마다 name·location·hours·map_url. 결과 없음은 count 0 + empty true + note '결과 없음: …'",
+  "elapsed_ms": 1359,
+  "evidence": {
+    "icn_found": {
+      "ok": true,
+      "count": 12,
+      "note": "분류·터미널·층은 시설 이름과 위치 글자에서 읽은 값입니다. map_url 은 구글 지도 검색 링크입니다.",
+      "first": {
+        "name": "더블유스토어 스타약국",
+        "items": "의약품",
+        "location": "제1여객터미널 3층 일반지역 G체크인카운터 부근",
+        "hours": "06:00 ~ 22:00",
+        "tel": "032-743-3828",
+        "area": "D",
+        "area_name": "출국장",
+        "category": "약국·의료",
+        "terminal": "T1",
+        "floor": "3F",
+        "map_url": "https://www.google.com/maps/search/?api=1&query=%EC%9D%B8%EC%B2%9C%EA%B5%AD%EC%A0%9C%EA%B3%B5%ED%95%AD+%EB%8D%94%EB%B8%94%EC%9C%A0%EC%8A%A4%ED%86%A0%EC%96%B4+%EC%8A%A4%ED%83%80%EC%95%BD%EA%B5%AD"
+      },
+      "error": null
+    },
+    "icn_none": {
+      "ok": true,
+      "count": 0,
+      "note": "결과 없음: 인천공항 시설 안내에 '아이스링크장'에 맞는 시설이 없습니다.",
+      "first": null,
+      "error": null
+    },
+    "gmp_found": {
+      "ok": true,
+      "count": 2,
+      "note": "한국공항공사 전국공항 임대계약 정보(계약 진행 중)입니다. 운영 시간은 이 자료에 없습니다.",
+      "first": {
+        "name": "스타벅스",
+        "business_type": "식음료업",
+        "location": "국제선 격리 3층",
+        "category": "식당·카페",
+        "business": false,
+        "zone": "국제선",
+        "floor": "3F",
+        "contract_start": "2024-12-09",
+        "contract_end": "2028-12-08",
+        "map_url": "https://www.google.com/maps/search/?api=1&query=%EA%B9%80%ED%8F%AC%EA%B3%B5%ED%95%AD+%EC%8A%A4%ED%83%80%EB%B2%85%EC%8A%A4"
+      },
+      "error": null
+    },
+    "gmp_none": {
+      "ok": true,
+      "count": 0,
+      "note": "결과 없음: 김포공항 매장 자료에 '아이스링크장'에 맞는 곳이 없습니다.",
+      "first": null,
+      "error": null
+    }
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "no": 18,
+  "requirement": "F3014",
+  "item": "로그 목록·상세·삭제, 수정 API 없음",
+  "status": "통과",
+  "note": "GET 목록·GET 상세(순서대로)·DELETE 동작. /api/logs 경로에 PUT·PATCH·POST 없음",
+  "elapsed_ms": 163,
+  "evidence": {
+    "list_count": 85,
+    "list_sample": [
+      {
+        "title": "인천공항 면세점 어디 있어?",
+        "kind": "chat",
+        "tool_calls": 1,
+        "replans": 0,
+        "errors": 0,
+        "session_id": "verify-11201548-c16-normal",
+        "started": "2026-11-20T15:48:58",
+        "updated": "2026-11-20T15:49:01",
+        "events": 18,
+        "anomalies": 0
+      },
+      {
+        "title": "내일 김포에서 제주 가는 가장 빠른 편",
+        "kind": "chat",
+        "tool_calls": 4,
+        "replans": 0,
+        "errors": 0,
+        "session_id": "verify-11201548-c11-memory",
+        "started": "2026-11-20T15:48:49",
+        "updated": "2026-11-20T15:48:57",
+        "events": 45,
+        "anomalies": 0
+      },
+      {
+        "title": "빠른 시일 내에 김포에서 센다이 가는 편",
+        "kind": "chat",
+        "tool_calls": 5,
+        "replans": 3,
+        "errors": 0,
+        "session_id": "verify-11201548-c10-limit",
+        "started": "2026-11-20T15:48:46",
+        "updated": "2026-11-20T15:48:49",
+        "events": 50,
+        "anomalies": 1
+      }
+    ],
+    "detail_first_events": [
+      "request_received",
+      "step_started",
+      "intent_analyzed",
+      "step_finished",
+      "step_started",
+      "planned",
+      "step_finished",
+      "step_started"
+    ],
+    "ordered": true,
+    "delete": {
+      "session": "verify-11201548-c06-greeting",
+      "http": 200,
+      "after_get_http": 404
+    },
+    "log_api_methods": {
+      "/api/logs": [
+        "get"
+      ],
+      "/api/logs/{sid}": [
+        "delete",
+        "get"
+      ],
+      "/api/logs/{sid}/audit": [
+        "get"
+      ]
+    }
+  }
+}

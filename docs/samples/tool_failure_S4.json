@@ -1,0 +1,304 @@
+{
+  "session_id": "verify-11201548-c07-toolfail",
+  "request": "김포에서 제주 가는 가장 빠른 편",
+  "answer": "추천: 대한항공 KE1143 — 2026-11-20 15:55 김포국제공항(GMP) 출발 → 제주국제공항(CJU)\n- 상태 탑승장 입장 · 탑승구 9\n- 늦어도 공항 도착 14:55 (출발 15:55에서 짐·보안검색 여유 60분을 뺀 역산)\n- 체크인 마감(추정) 15:25 (국내선 출발 30분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)\n- 보조 정보(한국공항공사 공항 혼잡도(실시간))는 불러오지 못했습니다.\n다른 후보:\n- 16:05 제주항공 7C131 → 제주국제공항(CJU) · 탑승장 입장\n- 16:25 대한항공 KE1157 → 제주국제공항(CJU) · 지연\n- 16:35 제주항공 7C133 → 제주국제공항(CJU) · 지연\n판단 기준: 지금(15:48) 이후 출발하는 편 · 목적지 제주국제공항(CJU) · 그중 가장 이른 편\n가정: 날짜를 말하지 않아 오늘부터 찾았습니다.\n근거 자료: 한국공항공사 실시간 운항 정보, 한국공항공사 실시간 운항 정보(info)\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+  "elapsed_ms": 2707,
+  "events": [
+    {
+      "event": "request_received",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:34",
+      "payload": {
+        "message": "김포에서 제주 가는 가장 빠른 편",
+        "chars": 18,
+        "has_memory": false
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:34",
+      "payload": {
+        "step": "analyze"
+      }
+    },
+    {
+      "event": "intent_analyzed",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "source": "llm",
+        "intent": "departures",
+        "reason": "김포에서 제주로 가는 항공편 중 가장 빠른(earliest) 출발편을 찾는 요청이다.",
+        "conditions": {
+          "airport": "GMP",
+          "destination": "제주",
+          "origin": "김포",
+          "earliest": true
+        },
+        "groups": {
+          "기준": {
+            "airport": "GMP"
+          },
+          "선호": {
+            "destination": "제주",
+            "origin": "김포",
+            "earliest": true
+          },
+          "제약": {}
+        },
+        "empty": [
+          "date",
+          "flexible_date",
+          "from_time",
+          "flight_no",
+          "keyword",
+          "to_time",
+          "arrive_airport_at",
+          "buffer_min"
+        ],
+        "inherited": [],
+        "note": null
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "step": "analyze",
+        "elapsed_ms": 1352
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "step": "plan"
+      }
+    },
+    {
+      "event": "planned",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "attempt": 0,
+        "steps": [
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261120",
+              "destination": "CJU"
+            }
+          },
+          {
+            "tool": "get_airport_congestion",
+            "args": {
+              "airport": "GMP"
+            }
+          }
+        ],
+        "followups": [
+          "get_flight_detail"
+        ],
+        "missing": null,
+        "assumptions": [
+          "날짜를 말하지 않아 오늘부터 찾았습니다."
+        ]
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "step": "plan",
+        "elapsed_ms": 4
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "step": "execute"
+      }
+    },
+    {
+      "event": "tool_called",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "tool": "search_departures",
+        "args": {
+          "airport": "GMP",
+          "date": "20261120",
+          "destination": "CJU"
+        },
+        "role": "candidates"
+      }
+    },
+    {
+      "event": "tool_result",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "tool": "search_departures",
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 592,
+        "count": 34
+      }
+    },
+    {
+      "event": "tool_called",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "tool": "get_airport_congestion",
+        "args": {
+          "airport": "GMP"
+        },
+        "role": "support"
+      }
+    },
+    {
+      "event": "tool_result",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "tool": "get_airport_congestion",
+        "ok": false,
+        "code": "NETWORK",
+        "elapsed_ms": 0,
+        "count": null
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "step": "execute",
+        "elapsed_ms": 613
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "step": "judge"
+      }
+    },
+    {
+      "event": "judged",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "decision": "enrich",
+        "candidates": 34,
+        "rejected": 0,
+        "rejected_reasons": {},
+        "criteria": [
+          "지금(15:48) 이후 출발하는 편",
+          "목적지 제주국제공항(CJU)",
+          "그중 가장 이른 편"
+        ],
+        "chosen": "KE1143",
+        "date_estimated": false
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "step": "judge",
+        "elapsed_ms": 3
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "step": "enrich"
+      }
+    },
+    {
+      "event": "tool_called",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:36",
+      "payload": {
+        "tool": "get_flight_detail",
+        "args": {
+          "airport": "GMP",
+          "flight_no": "KE1143",
+          "date": "20261120",
+          "direction": "departure"
+        },
+        "role": "detail"
+      }
+    },
+    {
+      "event": "tool_result",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:37",
+      "payload": {
+        "tool": "get_flight_detail",
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 642,
+        "count": 1
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:37",
+      "payload": {
+        "step": "enrich",
+        "elapsed_ms": 652
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:37",
+      "payload": {
+        "step": "respond"
+      }
+    },
+    {
+      "event": "responded",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:37",
+      "payload": {
+        "chars": 550,
+        "cards": 5,
+        "replans": 0
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:37",
+      "payload": {
+        "step": "respond",
+        "elapsed_ms": 4
+      }
+    },
+    {
+      "event": "memory_updated",
+      "session_id": "verify-11201548-c07-toolfail",
+      "ts": "2026-11-20T15:48:37",
+      "payload": {
+        "intent": "departures",
+        "summary": "departures GMP→CJU 20261120 추천 KE1143"
+      }
+    }
+  ]
+}

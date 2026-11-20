@@ -2,7 +2,7 @@
 
 만든 사람: 김현수 (SSAFY 16기 모바일 트랙)
 
-"센다이 가는 가장 빠른 편", "인천공항에 9시 도착인데 탈 수 있는 오사카행"처럼 말로 물으면
+"제주 가는 가장 빠른 편", "인천공항에 9시 도착인데 탈 수 있는 오사카행"처럼 말로 물으면
 에이전트가 요청을 분석하고, 공공데이터(인천국제공항공사·한국공항공사) 도구를 골라 부르고,
 공항 도착 시각·준비 시간 같은 제약과 비교해 항공편을 추천합니다. 맞는 편이 없으면 조건을 넓혀 다시 계획합니다(최대 3회).
 추천받은 편은 '내 계획'에 저장해 체크인 마감과 겹치는 일정을 관리할 수 있습니다.
@@ -23,7 +23,7 @@
 ## 실행 방법 (Windows Git Bash 기준)
 
 ```bash
-cd /c/SSAFY/pennant_race_ai_core3_8
+cd /c/SSAFY/pennant_race_ai_core3_8_2   # 프로젝트 폴더
 python -m venv .venv                 # 처음 한 번
 source .venv/Scripts/activate
 python -m pip install -r requirements.txt
@@ -35,6 +35,8 @@ python -m uvicorn app.main:app --reload --port 8000
 
 테스트(네트워크·키 없이 동작): `python -m pytest -q`
 API 연결 확인(실제 호출): `python api_check/check_apis.py --group all`
+명세·셀프 체크리스트 자동 검증(실제 호출, 약 2분): `python verify/run_checks.py`
+LangGraph 그래프 구조 출력: `python -m app.agent.graph`
 
 ## API 키 설정 (NF3001)
 
@@ -83,6 +85,33 @@ API 연결 확인(실제 호출): `python api_check/check_apis.py --group all`
 - 메인 에이전트는 다음 질문을 시작할 때 직전 판정을 읽습니다(`audit_referenced` 이벤트). 화면: 답변의 '점검' 배지, 실행 로그 상세의 '이상 징후 판정'.
 - 설계와 필수 기능 대비 비교: [docs/AGENT.md](docs/AGENT.md) 8장. F3021~F3023은 선택하지 않았습니다.
 
+## 검증 (명세 4장 · 셀프 체크리스트)
+
+`python verify/run_checks.py` 가 셀프 체크리스트 1~32번을 실제 공공데이터 API·GMS 로 실행해 결과를 남깁니다.
+최종 결과: **통과 27 · 실패 0 · 해당없음 5** (13번 위험 도메인 아님, 29~32번 선택하지 않은 심화 기능).
+
+| 결과 파일 | 내용 |
+|---|---|
+| `docs/VERIFICATION.md` | 검증 결과 요약 (항목별 결과, 대표 시나리오, 화면 캡처) |
+| `docs/verification/RESULTS.md`, `evidence/*.json` | 항목별 결과와 증빙 (요청·응답·이벤트) |
+| `docs/verification/SCENARIOS.md` | 대표 시나리오 6개: 최종 응답, 실행 단계, Tool 호출 이력, 재계획, 처리 시간, 기대와 실제의 차이 |
+| `docs/verification/PLANNING_CHECK.md`, `api_check.txt` | 기획 검증: 외부 API 호출, LLM 연결·Tool 선택, 설계 시험 |
+| `docs/verification/screens/` | 화면 캡처 9장 (계획 수정·삭제, /docs·네트워크 탭, 재계획·처리 중·도구 실패·키 누락 안내) |
+| `docs/samples/*.json` | 실행 로그 샘플: 대표 요청 전체, 재계획, 상한 도달, 도구 실패 |
+| `docs/셀프체크리스트.xlsx` | 제공 양식에 결과·증빙·비고를 적은 셀프 체크리스트 |
+
+## 제출물 (명세 6장)
+
+| 산출물 | 위치 |
+|---|---|
+| 요구사항 정의서 (기획 검증 포함) | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) |
+| Agent 설계 문서 | [docs/AGENT.md](docs/AGENT.md) |
+| Tool 정의서 | [docs/TOOLS.md](docs/TOOLS.md) |
+| API 명세서 | [docs/API.md](docs/API.md) |
+| 검증 결과 · 실행 로그 샘플 | [docs/VERIFICATION.md](docs/VERIFICATION.md), `docs/verification/`, `docs/samples/` |
+| 셀프 체크리스트 | [docs/셀프체크리스트.xlsx](docs/셀프체크리스트.xlsx) |
+| 명세 대조표 | [docs/SPEC_CHECK.md](docs/SPEC_CHECK.md) |
+
 ## 폴더
 
 ```
@@ -95,6 +124,8 @@ app/
 web/       index.html  app.js  style.css
 api_check/ check_apis.py (공공데이터 연결 확인)
 tests/     pytest (가짜 응답, 네트워크 불필요)
-docs/      PLAN.md(기획) AGENT.md TOOLS.md API.md SPEC_CHECK.md
+docs/      REQUIREMENTS.md(요구사항 정의서) PLAN.md(기획) AGENT.md TOOLS.md API.md SPEC_CHECK.md VERIFICATION.md
+           verification/(검증 증빙·시나리오·화면) samples/(실행 로그 샘플) 셀프체크리스트.xlsx
+verify/    run_checks.py (셀프 체크리스트 자동 검증) checklist_template.xlsx
 data/      planner.sqlite3 (계획·실행 로그·판정·대화 맥락, 실행 중 생성, git 제외)
 ```

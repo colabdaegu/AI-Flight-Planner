@@ -1,0 +1,14 @@
+{
+  "no": 16,
+  "requirement": "F3013",
+  "item": "로깅 Agent 수집·저장에 LLM 미사용",
+  "status": "통과",
+  "note": "정상 세션(판정 normal) 수집·저장 중 로깅 Agent LLM 호출 0회",
+  "elapsed_ms": 3023,
+  "evidence": {
+    "session": "verify-11201548-c16-normal",
+    "audit_status": "normal",
+    "logger_llm_calls": 0,
+    "logger_imports_llm": false
+  }
+}

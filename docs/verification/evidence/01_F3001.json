@@ -1,0 +1,680 @@
+{
+  "no": 1,
+  "requirement": "F3001",
+  "item": "Tool 명세·등록, 정상/실패 호출 형식",
+  "status": "통과",
+  "note": "도구 11개 (외부 9 · 로컬 2). 로컬 도구는 키가 필요 없거나(공항 검색) 묶은 외부 도구의 실패를 parts 에 담아 돌려준다.",
+  "elapsed_ms": 17858,
+  "evidence": {
+    "agent_tool_list": [
+      {
+        "name": "search_departures",
+        "kind": "external",
+        "description": "어느 공항에서 떠나는 항공편 후보를 찾을 때 쓴다 (출발 시간표, 가장 빠른 편, 어디로 가는 편). 인천(ICN)은 인천공항공사, 그 외는 한국공항공사 자료. 날짜(YYYYMMDD)를 생략하면 오늘. 자료는 오늘 −3일 ~ +6일만 있어 그 밖의 날짜는 같은 요일 운항표로 추정하고 note 에 밝힌다. 목적지 IATA 코드로 거를 수 있다.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string",
+              "description": "출발 공항 IATA 코드 (ICN, GMP, CJU, PUS 등)"
+            },
+            "date": {
+              "type": "string",
+              "description": "YYYYMMDD"
+            },
+            "from_time": {
+              "type": "string",
+              "description": "HHMM"
+            },
+            "to_time": {
+              "type": "string",
+              "description": "HHMM"
+            },
+            "destination": {
+              "type": "string",
+              "description": "도착 공항 IATA 코드"
+            }
+          },
+          "required": [
+            "airport"
+          ]
+        }
+      },
+      {
+        "name": "search_arrivals",
+        "kind": "external",
+        "description": "어느 공항에 들어오는(도착하는) 항공편 후보를 찾을 때 쓴다. 날짜(YYYYMMDD)를 생략하면 오늘. 자료는 오늘 −3일 ~ +6일만 있어 그 밖의 날짜는 같은 요일 운항표로 추정하고 note 에 밝힌다. 출발지 IATA 코드로 거를 수 있다.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string",
+              "description": "도착 공항 IATA 코드 (ICN, GMP 등)"
+            },
+            "date": {
+              "type": "string",
+              "description": "YYYYMMDD"
+            },
+            "from_time": {
+              "type": "string",
+              "description": "HHMM"
+            },
+            "to_time": {
+              "type": "string",
+              "description": "HHMM"
+            },
+            "origin": {
+              "type": "string",
+              "description": "출발 공항 IATA 코드"
+            }
+          },
+          "required": [
+            "airport"
+          ]
+        }
+      },
+      {
+        "name": "search_flight",
+        "kind": "external",
+        "description": "편명(KE123 등)으로 운항을 찾을 때 쓴다. 공항을 몰라도 인천·한국공항공사 공항 전체에서 찾는다.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "flight_no": {
+              "type": "string",
+              "description": "예: KE123"
+            },
+            "airport": {
+              "type": "string",
+              "description": "공항을 알 때만 IATA 코드 (모르면 생략)"
+            },
+            "date": {
+              "type": "string",
+              "description": "YYYYMMDD"
+            }
+          },
+          "required": [
+            "flight_no"
+          ]
+        }
+      },
+      {
+        "name": "get_flight_detail",
+        "kind": "external",
+        "description": "후보 항공편의 편명으로 상세(탑승구·터미널·상태·예상 시각)를 확인할 때 쓴다. 출발 목록에 탑승구가 없을 때(한국공항공사 공항) 특히 필요하다.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string",
+              "description": "기준 공항 IATA 코드"
+            },
+            "flight_no": {
+              "type": "string",
+              "description": "예: KE123"
+            },
+            "date": {
+              "type": "string",
+              "description": "YYYYMMDD"
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "departure",
+                "arrival"
+              ]
+            }
+          },
+          "required": [
+            "airport",
+            "flight_no"
+          ]
+        }
+      },
+      {
+        "name": "get_commercial_facilities",
+        "kind": "external",
+        "description": "김포·김해·제주 등 한국공항공사 공항의 매장(식당·카페·편의점·면세점·라운지 등) 이름·업종·위치를 찾을 때 쓴다. 인천공항은 get_incheon_facilities 를 쓴다.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string",
+              "description": "IATA 코드 (GMP, PUS, CJU …)"
+            },
+            "keyword": {
+              "type": "string"
+            },
+            "include_business": {
+              "type": "boolean",
+              "description": "업무시설(화물·사무실 등) 포함"
+            }
+          },
+          "required": [
+            "airport"
+          ]
+        }
+      },
+      {
+        "name": "get_airport_congestion",
+        "kind": "external",
+        "description": "김포·제주·김해·청주·대구 공항 국내선의 '지금' 구간별 혼잡 단계(체크인→신분확인→보안검색→탑승)를 볼 때 쓴다. 시간대별 흐름이 필요하면 get_hourly_traffic 을 쓴다.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string",
+              "description": "IATA 코드"
+            }
+          },
+          "required": [
+            "airport"
+          ]
+        }
+      },
+      {
+        "name": "get_incheon_facilities",
+        "kind": "external",
+        "description": "인천공항의 면세점·식당·카페·약국·환전·라운지·편의시설 위치와 운영 시간을 찾을 때 쓴다. keyword(예: 면세, 약국), area(D=출국장, A=입국장), category 로 거를 수 있다.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "keyword": {
+              "type": "string"
+            },
+            "area": {
+              "type": "string",
+              "enum": [
+                "D",
+                "A"
+              ]
+            },
+            "category": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      {
+        "name": "get_incheon_passenger_forecast",
+        "kind": "external",
+        "description": "인천공항 터미널별 출국·입국 예상 승객 수(시간대별)를 볼 때 쓴다. 혼잡도 API 가 없는 인천의 혼잡 참고 자료. selectdate 0=오늘, 1=내일.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "selectdate": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "search_airports",
+        "kind": "local",
+        "description": "도시·공항 이름(한글·영문)이나 3글자 코드를 공항 코드로 바꿀 때 쓴다. scope=origin 이면 출발 자료가 있는 국내 공항만.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "all",
+                "origin"
+              ]
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "get_hourly_traffic",
+        "kind": "external",
+        "description": "한국공항공사 공항(김포·김해·제주·대구·청주 등 14곳)의 시간대별 이용 흐름(예상 승객 수, 없으면 출발·도착 편수)을 볼 때 쓴다. '몇 시가 붐벼?', '오후에 사람 많아?' 같은 질문.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string",
+              "description": "IATA 코드"
+            },
+            "date": {
+              "type": "string",
+              "description": "YYYYMMDD"
+            }
+          },
+          "required": [
+            "airport"
+          ]
+        }
+      },
+      {
+        "name": "get_airport_overview",
+        "kind": "local",
+        "description": "공항 시설 화면용. 공항 하나의 혼잡·시설 자료를 한 번에 모을 때 쓴다 (여러 외부 도구를 묶은 로컬 도구).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string",
+              "description": "IATA 코드"
+            }
+          },
+          "required": [
+            "airport"
+          ]
+        }
+      }
+    ],
+    "doc_tools": [
+      "get_airport_congestion",
+      "get_airport_overview",
+      "get_commercial_facilities",
+      "get_flight_detail",
+      "get_hourly_traffic",
+      "get_incheon_facilities",
+      "get_incheon_passenger_forecast",
+      "search_airports",
+      "search_arrivals",
+      "search_departures",
+      "search_flight"
+    ],
+    "calls": [
+      {
+        "tool": "search_departures",
+        "kind": "external",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "airport": "GMP"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": 80
+        },
+        "잘못된 입력": {
+          "args": {
+            "airport": "ZZZ"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "지원하지 않는 공항 코드: ZZZ",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "NO_KEY",
+          "parts": null
+        }
+      },
+      {
+        "tool": "search_arrivals",
+        "kind": "external",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "airport": "GMP"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": 122
+        },
+        "잘못된 입력": {
+          "args": {
+            "airport": "GMP",
+            "date": "2026-13-45"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "날짜는 YYYYMMDD 형식의 실제 날짜여야 합니다 (예: 20261120).",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "NO_KEY",
+          "parts": null
+        }
+      },
+      {
+        "tool": "search_flight",
+        "kind": "external",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "flight_no": "NH6970",
+            "airport": "GMP"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": 1
+        },
+        "잘못된 입력": {
+          "args": {
+            "flight_no": ""
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "편명을 입력하십시오 (예: KE1041).",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "NO_KEY",
+          "parts": null
+        }
+      },
+      {
+        "tool": "get_flight_detail",
+        "kind": "external",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "airport": "GMP",
+            "flight_no": "NH6970"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": 1
+        },
+        "잘못된 입력": {
+          "args": {
+            "airport": "GMP",
+            "flight_no": "KE1",
+            "direction": "sideways"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "direction 은 departure 또는 arrival 이어야 합니다.",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "NO_KEY",
+          "parts": null
+        }
+      },
+      {
+        "tool": "get_commercial_facilities",
+        "kind": "external",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "airport": "GMP"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": 4
+        },
+        "잘못된 입력": {
+          "args": {
+            "airport": "ICN"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "한국공항공사 공항(김포·김해·제주 등 14곳) 코드를 주십시오. 인천은 get_incheon_facilities 를 씁니다.",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "NO_KEY",
+          "parts": null
+        }
+      },
+      {
+        "tool": "get_airport_congestion",
+        "kind": "external",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "airport": "GMP"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": 1
+        },
+        "잘못된 입력": {
+          "args": {
+            "airport": "ICN"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "실시간 혼잡도 자료가 없는 공항: ICN",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "NO_KEY",
+          "parts": null
+        }
+      },
+      {
+        "tool": "get_incheon_facilities",
+        "kind": "external",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "keyword": "약국"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": 12
+        },
+        "잘못된 입력": {
+          "args": {
+            "area": "X"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "area 는 D(출국장) 또는 A(입국장)이어야 합니다.",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "NO_KEY",
+          "parts": null
+        }
+      },
+      {
+        "tool": "get_incheon_passenger_forecast",
+        "kind": "external",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "selectdate": "0"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": 25
+        },
+        "잘못된 입력": {
+          "args": {
+            "selectdate": "9"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "selectdate 는 0(오늘) 또는 1(내일)이어야 합니다.",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "NO_KEY",
+          "parts": null
+        }
+      },
+      {
+        "tool": "search_airports",
+        "kind": "local",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "query": "김포"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": 1
+        },
+        "잘못된 입력": {
+          "args": {
+            "query": "김포",
+            "scope": "moon"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "scope 는 all 또는 origin 이어야 합니다.",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "parts": null
+        }
+      },
+      {
+        "tool": "get_hourly_traffic",
+        "kind": "external",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "airport": "GMP"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": 487
+        },
+        "잘못된 입력": {
+          "args": {
+            "airport": "ICN"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "시간대별 흐름은 한국공항공사 공항(김포·김해·제주 등 14곳)만 제공합니다. 인천은 승객 예고를 쓰십시오.",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "NO_KEY",
+          "parts": null
+        }
+      },
+      {
+        "tool": "get_airport_overview",
+        "kind": "local",
+        "in_doc": true,
+        "정상": {
+          "args": {
+            "airport": "GMP"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "message": null,
+          "count": null
+        },
+        "잘못된 입력": {
+          "args": {
+            "airport": "ZZZ"
+          },
+          "exception": null,
+          "envelope_ok": true,
+          "ok": false,
+          "code": "BAD_ARGS",
+          "message": "지원하지 않는 공항 코드: ZZZ",
+          "count": null
+        },
+        "키 비움": {
+          "exception": null,
+          "envelope_ok": true,
+          "ok": true,
+          "code": null,
+          "parts": {
+            "congestion": "NO_KEY",
+            "hourly": "NO_KEY",
+            "commercial": "NO_KEY"
+          }
+        }
+      }
+    ]
+  }
+}

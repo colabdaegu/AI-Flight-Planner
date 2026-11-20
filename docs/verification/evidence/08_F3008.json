@@ -1,0 +1,60 @@
+{
+  "no": 8,
+  "requirement": "F3008",
+  "item": "계산 값과 판단 기준 일치, 확인 불가 값은 역산·추정 표시",
+  "status": "통과",
+  "note": "기준 09:00+120분=11:00, 추천 11:05, 늦어도 도착 09:05(역산), 체크인 마감은 '추정' 표기",
+  "elapsed_ms": 3117,
+  "evidence": {
+    "run": {
+      "session_id": "verify-11201548-c08-osaka",
+      "message": "내일 인천공항에 9시 도착하는데 탈 수 있는 오사카행 항공편",
+      "http": 200,
+      "elapsed_ms": 3116,
+      "intent": "departures",
+      "intent_source": "llm",
+      "replans": 0,
+      "steps": "analyze(1226ms) → plan(4ms) → execute(1798ms) → judge(4ms) → enrich(3ms) → respond(3ms)",
+      "tools": [
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "ICN",
+            "date": "20261121"
+          },
+          "role": "candidates",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 1507,
+          "count": 544
+        },
+        {
+          "tool": "get_incheon_passenger_forecast",
+          "args": {
+            "selectdate": "1"
+          },
+          "role": "support",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 270,
+          "count": 25
+        }
+      ],
+      "answer": "추천: 대한항공 KE727 — 2026-11-21 11:05 인천국제공항(ICN) 출발 → 오사카/ 간사이(KIX)\n- 상태 예정 · 탑승구 241 · 터미널 P03 · 공동운항 JL5270 (같은 비행기)\n- 늦어도 공항 도착 09:05 (출발 11:05에서 짐·보안검색 여유 120분을 뺀 역산)\n- 체크인 마감(추정) 10:05 (국제선 출발 60분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)\n- 참고: 9시대 인천국제공항 예상 인원 T1 출국 4,380명(오늘 최대의 92%), T2 출국 2,521명(오늘 최대의 53%).\n다른 후보:\n- 12:00 진에어 LJ329 → 오사카/ 간사이(KIX) · 예정 · 탑승구 209 · P03\n- 12:10 트리니티항공 TW303 → 오사카/ 간사이(KIX) · 예정 · 탑승구 6 · P01\n- 12:40 에어부산 BX331 → 오사카/ 간사이(KIX) · 예정 · 탑승구 285 · P03 · 공동운항 OZ9570\n판단 기준: 공항 도착 09:00 + 준비 120분 = 11:00 이후 출발하는 편 · 목적지 오사카(이타미)(ITM), 오사카(간사이)(KIX)\n제외한 후보: 준비 시간 부족 16편(7C1301 07:00, RS301 07:15, OZ112 07:20 외)\n준비 시간은 국제선 기본값 120분으로 계산했습니다.\n근거 자료: 인천국제공항공사 여객기 운항 현황, 인천국제공항공사 승객 예고\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+      "audit": {
+        "run_index": 0,
+        "status": "normal",
+        "status_label": "이상 없음",
+        "warnings": [],
+        "diagnosis": null
+      },
+      "error": null
+    },
+    "criteria": "공항 도착 09:00 + 준비 120분 = 11:00 이후 출발하는 편 목적지 오사카(이타미)(ITM), 오사카(간사이)(KIX)",
+    "checks": {
+      "threshold_ok": true,
+      "chosen_after_threshold": true,
+      "latest_ok": true
+    }
+  }
+}

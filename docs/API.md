@@ -11,6 +11,22 @@
 
 오류 메시지에는 키나 내부 예외 내용을 넣지 않습니다 (NF3002). 상태 코드: 입력 오류 400, 없음 404, 조건 불충족 422, 외부 API 실패 502, 내부 오류 500.
 
+### 요청·응답 모델 (Pydantic, `/docs` 에 스키마로 표시)
+
+| 경로 | 요청 모델 | 응답 모델 (200) | 오류 모델 |
+|---|---|---|---|
+| `POST /chat` | `ChatIn {message, session_id?, run_id?}` | `ChatOut {ok, data: ChatData}` — ChatData: `session_id, answer, cards, intent, intent_source, replans, trace[Event], audit[AuditBrief], cancelled?` | `ErrorOut {ok:false, error{code, message}}` |
+| `POST /plans`, `PUT /plans/{id}` | `PlanIn {title, memo?, airport, flight_no, line, estimated?, dep_manual, buffer_min?, user_arrival?}` | `PlanSavedOut {ok, data{plan: Plan, warnings[]}}` | `ErrorOut` (400·404·422) |
+| `GET /plans` · `GET /plans/{id}` | — | `PlanListOut {ok, data[Plan]}` · `PlanOut {ok, data: Plan}` | `ErrorOut` |
+| `GET /logs` | — | `LogListOut {ok, data[LogSession]}` | — |
+| `GET /logs/{sid}` | — | `LogDetailOut {ok, data{session_id, events[Event]}}` | `ErrorOut` (400·404) |
+| `GET /logs/{sid}/audit` | — | `AuditOut` | `ErrorOut` |
+| `DELETE /plans/{id}` · `DELETE /logs/{sid}` | — | `DeletedOut {ok, data{deleted}}` | `ErrorOut` |
+
+`Plan` 필드: `id, title, memo, airport, flight_no, flight_date(YYYY-MM-DD), destination, line, scheduled, estimated, checkin_min, checkin_deadline, buffer_min, user_arrival, arrive_by, time_source, arrival_auto, created_at(생성 일시)`.
+`Event` 필드: `event, session_id, ts, payload` — 이벤트 종류는 [AGENT.md](AGENT.md) 6장.
+모델 정의는 `app/api/routes.py` 에 있고, 서버를 켠 뒤 `http://127.0.0.1:8000/docs` 에서 같은 스키마를 볼 수 있습니다.
+
 ## 대화
 
 | 메서드 | 경로 | 요청 | 응답 data |
@@ -25,11 +41,12 @@
 
 ## 계획 (F3015 · F3016)
 
-요청 본문(PlanIn): `title(필수), memo, airport(필수, IATA), flight_no(필수), line(필수, domestic/international), estimated("YYYY-MM-DD HH:MM", 편명 조회가 안 될 때 쓰는 출발 시각), buffer_min(0~600, 비우면 국내선 60·국제선 120), user_arrival(비우면 권장 도착)`
+요청 본문(PlanIn): `title(필수), memo, airport(필수, IATA), flight_no(필수), line(필수, domestic/international), estimated("YYYY-MM-DD HH:MM", 편명 조회가 안 될 때 쓰는 출발 시각), buffer_min(공항 체크인 시간 0~600분, 비우면 국내선 60·국제선 120), user_arrival(비우면 체크인 마감 시각)`
 
 저장할 때 서버가 편명으로 그날 출발 시각·목적지를 조회한다(인천: 여객기 운항 현황, 그 외: 실시간 운항 정보).
-- 체크인 마감 = 출발(예상 출발 우선) − 공항 체크인 시간(입력값, 비우면 국내선 60분 / 국제선 120분) (`app/checkin.py`)
-- 권장 도착 = 체크인 마감. 내 도착(입력값, 비우면 권장 도착)이 체크인 마감보다 늦으면 422 `CONDITION_NOT_MET`
+- 체크인 마감 = 항공기 출발 시간(예상 출발 우선) − 공항 체크인 시간 `buffer_min`(입력값, 비우면 국내선 60분 · 국제선 120분). `checkin_min` 에 쓴 분을 돌려줍니다.
+- 내 공항 도착 예정이 체크인 마감보다 늦으면 422 `CONDITION_NOT_MET`. 화면의 '여유' = 체크인 마감 − 내 공항 도착 예정(분)
+- 예전 방식(항공사 고정 30·60분)으로 저장된 계획도 조회할 때 같은 식으로 다시 계산합니다.
 - 고른 노선이 편명 조회 결과(목적지)와 다르면 422 `LINE_MISMATCH`
 - 같은 날 준비 구간이 겹치면 저장하고 `warnings` 로 알림
 
@@ -42,7 +59,7 @@
 | PUT | `/plans/{id}` | `{plan, warnings[]}` |
 | DELETE | `/plans/{id}` | `{deleted}` |
 
-계획 한 건: `id, title, memo, airport, flight_no, flight_date, destination, line, scheduled, estimated, checkin_min, checkin_deadline, buffer_min, user_arrival, arrive_by(권장 도착), time_source(flight/manual), created_at`.
+계획 한 건: `id, title, memo, airport, flight_no, flight_date, destination, line, scheduled, estimated, checkin_min, checkin_deadline, buffer_min, user_arrival, arrive_by(= 체크인 마감), time_source(flight/manual), created_at`.
 
 ## 실행 로그 (F3014) — 수정 API 없음
 

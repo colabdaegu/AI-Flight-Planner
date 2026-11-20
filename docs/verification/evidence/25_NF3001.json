@@ -1,0 +1,31 @@
+{
+  "no": 25,
+  "requirement": "NF3001 · NF3002",
+  "item": "키 미포함, 화면에 키·오류 상세 미노출",
+  "status": "통과",
+  "note": "파일 101개에서 키 문자열 없음(.env 제외·.gitignore 포함). 오류 응답은 코드+안내 문구만",
+  "elapsed_ms": 52,
+  "evidence": {
+    "scanned_files": 101,
+    "key_found_in": [],
+    "env_ignored": true,
+    "error_samples": {
+      "bad_airport": {
+        "ok": false,
+        "error": {
+          "code": "BAD_ARGS",
+          "message": "지원하지 않는 공항 코드: ZZZ"
+        }
+      },
+      "no_key": {
+        "ok": false,
+        "error": {
+          "code": "NO_KEY",
+          "message": "DATA_GO_KR_KEY 가 설정되지 않았습니다. .env 를 확인하십시오."
+        }
+      },
+      "too_long_message_http422": true
+    },
+    "leaks": []
+  }
+}

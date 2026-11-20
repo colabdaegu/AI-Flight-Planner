@@ -1,0 +1,134 @@
+{
+  "no": 10,
+  "requirement": "F3009 · NF3004",
+  "item": "재계획 상한에서 멈춤",
+  "status": "통과",
+  "note": "재계획 3회 후 멈춤, '재계획 상한에 도달' 안내 (3317ms)",
+  "elapsed_ms": 3317,
+  "evidence": {
+    "run": {
+      "session_id": "verify-11201548-c10-limit",
+      "message": "빠른 시일 내에 김포에서 센다이 가는 편",
+      "http": 200,
+      "elapsed_ms": 3317,
+      "intent": "departures",
+      "intent_source": "llm",
+      "replans": 3,
+      "steps": "analyze(1474ms) → plan(4ms) → execute(446ms) → [재계획 1: 조건을 만족하는 편이 없음 → 1일 뒤 날짜로 넓혀 다시 조회] → judge(3ms) → plan(4ms) → execute(388ms) → [재계획 2: 조건을 만족하는 편이 없음 → 2일 뒤 날짜로 넓혀 다시 조회] → judge(4ms) → plan(4ms) → execute(407ms) → [재계획 3: 조건을 만족하는 편이 없음 → 3일 뒤 날짜로 넓혀 다시 조회] → judge(3ms) → plan(4ms) → execute(419ms) → judge(3ms) → respond(3ms)",
+      "tools": [
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "GMP",
+            "date": "20261120",
+            "destination": "SDJ"
+          },
+          "role": "candidates",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 427,
+          "count": 0
+        },
+        {
+          "tool": "get_airport_congestion",
+          "args": {
+            "airport": "GMP"
+          },
+          "role": "support",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 0,
+          "count": 1
+        },
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "GMP",
+            "date": "20261121",
+            "destination": "SDJ"
+          },
+          "role": "candidates",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 377,
+          "count": 0
+        },
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "GMP",
+            "date": "20261122",
+            "destination": "SDJ"
+          },
+          "role": "candidates",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 395,
+          "count": 0
+        },
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "GMP",
+            "date": "20261123",
+            "destination": "SDJ"
+          },
+          "role": "candidates",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 408,
+          "count": 0
+        }
+      ],
+      "answer": "조건을 만족하는 항공편을 찾지 못했습니다 (마지막으로 찾은 날짜 2026-11-23).\n재계획 상한(3회)에 도달해 멈췄습니다.\n조건을 바꿔 보십시오: 다른 출발 공항(예: 김포·김해), 다른 날짜, 또는 시간 조건 완화.\n판단 기준: 목적지 센다이(SDJ) · 그중 가장 이른 편\n재계획 3회: 조건을 만족하는 편이 없음 → 1일 뒤 날짜로 넓혀 다시 조회 / 조건을 만족하는 편이 없음 → 2일 뒤 날짜로 넓혀 다시 조회 / 조건을 만족하는 편이 없음 → 3일 뒤 날짜로 넓혀 다시 조회\n가정: 날짜를 말하지 않아 오늘부터 찾았습니다.\n근거 자료: 한국공항공사 실시간 운항 정보\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+      "audit": {
+        "run_index": 0,
+        "status": "anomaly",
+        "status_label": "이상",
+        "warnings": [
+          {
+            "code": "EXCESSIVE_REPLAN",
+            "label": "재계획 과다 반복",
+            "message": "재계획 3회로 상한 3회에 이르렀습니다.",
+            "evidence": [
+              {
+                "seq": 15,
+                "event": "replanned",
+                "ts": "2026-11-20T15:48:48"
+              },
+              {
+                "seq": 25,
+                "event": "replanned",
+                "ts": "2026-11-20T15:48:49"
+              },
+              {
+                "seq": 35,
+                "event": "replanned",
+                "ts": "2026-11-20T15:48:49"
+              }
+            ]
+          }
+        ],
+        "diagnosis": {
+          "status": "pending",
+          "reason": "원인 진단 중"
+        }
+      },
+      "error": null
+    },
+    "replanned": [
+      {
+        "attempt": 1,
+        "reason": "조건을 만족하는 편이 없음 → 1일 뒤 날짜로 넓혀 다시 조회"
+      },
+      {
+        "attempt": 2,
+        "reason": "조건을 만족하는 편이 없음 → 2일 뒤 날짜로 넓혀 다시 조회"
+      },
+      {
+        "attempt": 3,
+        "reason": "조건을 만족하는 편이 없음 → 3일 뒤 날짜로 넓혀 다시 조회"
+      }
+    ]
+  }
+}

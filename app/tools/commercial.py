@@ -10,7 +10,7 @@
 import re
 
 from app import airports
-from app.tools.common import fetch, pick
+from app.tools.common import fetch, maps_link, pick
 from app.tools.flights import today_kst
 from app.tools.registry import Tool, register
 
@@ -88,7 +88,8 @@ def get_commercial_facilities(airport, keyword=None, include_business=False):
         zone, floor = parse_location(loc)
         rows.append({"name": store, "business_type": kind, "location": loc, "category": category,
                      "business": business, "zone": zone, "floor": floor,
-                     "contract_start": pick(i, "contractStartDate"), "contract_end": pick(i, "contractEndDate")})
+                     "contract_start": pick(i, "contractStartDate"), "contract_end": pick(i, "contractEndDate"),
+                     "map_url": maps_link(f"{airports.NAMES[code]}공항 {store}") if store else None})
     if keyword:
         k = keyword.strip().lower()
         kcat, _ = classify(keyword, None)          # '식당' → 식당·카페 처럼 종류로도 찾는다
@@ -101,9 +102,10 @@ def get_commercial_facilities(airport, keyword=None, include_business=False):
         summary["by_category"][r["category"]] = summary["by_category"].get(r["category"], 0) + 1
         bucket = summary["by_place"].setdefault(f"{r['zone'] or '기타'}|{r['floor'] or '-'}", {})
         bucket[r["category"]] = bucket.get(r["category"], 0) + 1
+    note = ("한국공항공사 전국공항 임대계약 정보(계약 진행 중)입니다. 운영 시간은 이 자료에 없습니다."
+            if shown else f"결과 없음: {airports.NAMES[code]}공항 매장 자료에 '{keyword or '승객용 매장'}'에 맞는 곳이 없습니다.")
     return {"airport": code, "airport_name": airports.NAMES[code], "count": len(shown), "total": total,
-            "hidden_business": hidden, "rows": shown, "summary": summary,
-            "note": "한국공항공사 전국공항 임대계약 정보(계약 진행 중)입니다. 운영 시간은 이 자료에 없습니다."}
+            "hidden_business": hidden, "rows": shown, "summary": summary, "empty": not shown, "note": note}
 
 
 register(Tool(

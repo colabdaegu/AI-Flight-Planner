@@ -14,6 +14,7 @@
 - 메인 에이전트는 이벤트를 **발행만** 합니다. 누가 구독하는지 모르고, 구독자가 없거나 고장 나도 대화는 그대로 동작합니다 (`app/events.py`).
 - 로깅 에이전트는 이벤트를 받는 즉시 SQLite `events` 표에 발생 순서대로 저장합니다. 요약·가공하지 않고, 수정 API 가 없습니다 (`app/logger_agent.py`).
 - 화면에서 직접 부른 조회(시간표·시설 등)도 `screen` 세션으로 같은 로그에 남습니다.
+- 두 Agent 를 제대로 나눴는지는 "로깅 Agent 가 없거나 저장이 실패해도 메인 Agent 가 정상 응답하는가"로 확인합니다. `.env` 의 `VERIFY_LOGGER=off`(구독 안 함), `VERIFY_LOGGER=broken`(저장이 항상 실패하는 구독자)로 서버를 켜서 확인할 수 있고, `verify/run_checks.py` 15·17번이 같은 실험을 자동으로 합니다.
 
 ## 2. 실행 단계와 상태 (F3005 ~ F3011)
 
@@ -22,6 +23,8 @@ analyze → plan → execute → judge ─┬─ replan  → plan     (후보 0�
                                   ├─ enrich  → respond  (고른 편의 상세 보강)
                                   └─ respond → END
 ```
+
+명세의 단계(의도 분석 / 계획 수립 / Tool 호출 / 결과 통합·재계획 / 최종 응답)와 그래프 노드는 이렇게 대응합니다: analyze = 의도 분석, plan = 계획 수립, execute = Tool 호출, judge = 결과 통합·제약 판단·재계획 결정, enrich = 상세 보강(앞 도구 결과를 다음 도구 입력으로), respond = 최종 응답. 그래프 구조는 `python -m app.agent.graph` 로 Mermaid 글로 출력합니다 (`graph.STAGES`, 검증 결과 `docs/verification/graph.md`).
 
 | 단계 | 입력 (state) | 출력 | 내용 |
 |---|---|---|---|
@@ -38,13 +41,18 @@ analyze → plan → execute → judge ─┬─ replan  → plan     (후보 0�
 
 ### 조건 (F3005)
 
+`nodes.group_conditions` 가 뽑은 조건을 명세 2.2 의 세 묶음으로 나누고, `intent_analyzed` 이벤트의 `groups` 에 싣습니다. 말하지 않은 조건은 채우지 않고 `empty` 목록에 이름만 남깁니다.
+
 | 구분 | 필드 |
 |---|---|
-| 기준 | date, from_time, to_time, airport(기준 공항) |
-| 선호 | destination / origin(도시·공항), earliest, keyword(시설) |
-| 제약 | arrive_airport_at(공항 도착 시각), buffer_min(준비 시간) |
+| 기준 | date, flexible_date('빠른 시일 내'), from_time(이 시각 이후), airport(기준 공항), flight_no |
+| 선호 | destination / origin(도시·공항), earliest(가장 빠른 편), keyword(시설 종류) |
+| 제약 | to_time(이 시각 전까지), arrive_airport_at(공항 도착 시각), buffer_min(준비 시간) |
 
-LLM 이 뽑은 값은 `normalize` 가 형식을 다시 검사하고, 틀린 값(존재하지 않는 날짜, 9999 같은 시각, 잘못된 편명)은 버립니다.
+예) "내일 오후 3시 이후 김포에서 제주 가는 가장 빠른 편, 공항에는 1시 반에 도착해. 준비는 1시간이면 돼"
+→ 기준 `{date: 내일, from_time: 1500, airport: GMP}` · 선호 `{destination: CJU, earliest: true}` · 제약 `{arrive_airport_at: 1330, buffer_min: 60}` · 비움 `[flexible_date, flight_no, origin, keyword, to_time]`
+
+LLM 이 뽑은 값은 `normalize` 가 형식을 다시 검사하고, 틀린 값(존재하지 않는 날짜, 9999 같은 시각, 잘못된 편명)은 버립니다. 규칙 기반 분석은 오전·오후를 말하지 않은 시각을 앞에서 말한 오전·오후로 읽고(없으면 1~6시는 오후), '1시간' 같은 시간 길이는 시각으로 읽지 않습니다.
 
 ## 3. 계획 수립 규칙 (F3006)
 
@@ -65,7 +73,10 @@ LLM 이 뽑은 값은 `normalize` 가 형식을 다시 검사하고, 틀린 값(
 - 오늘이고 도착 시각을 말하지 않았으면: 기준 = 지금. 이미 지난 편 제외.
 - 결항 편, 이미 '출발'로 표시된 편 제외.
 - 목적지가 도시(예: 도쿄)면 그 도시의 모든 공항(NRT·HND)을 목적지로 본다.
-- 고른 편마다 **늦어도 공항 도착할 시각 = 출발 − 준비 시간**을 역산해 보여 준다. 체크인 마감은 항공사마다 달라 API 로 확인할 수 없으므로 지어내지 않는다.
+- 출발 시각이 비어 있는 편은 **판단하지 않은 채 제외**하고 사유 '출발 시각 정보 없음(판단하지 않음)'을 남긴다 (F3003).
+- 고른 편마다 **늦어도 공항 도착 = 출발 − 준비 시간**을 역산해 보여 준다. 체크인 마감은 항공사마다 달라 공공데이터로 확인할 수 없으므로 '체크인 마감(추정)'으로 표시하고 항공사 안내로 확인하라고 적는다 (F3008).
+- 자료 범위(오늘 −3일 ~ +6일) 밖 날짜는 같은 요일 운항표로 조회하므로, 그 날짜의 시각끼리 비교하고 '지금 이후' 기준은 쓰지 않는다. 답의 날짜 옆에 '(추정)'과 이유를 적는다 (F3002).
+- 제외한 후보는 사유별로 편명과 시각을 함께 적는다. 예) `제외한 후보: 준비 시간 부족 1편(KE721 09:30); 결항 1편(OZ112 15:20)` — `judged` 이벤트에도 `rejected_reasons` 로 남긴다 (F3011).
 
 **재계획 조건과 순서** (후보가 0건일 때만)
 
@@ -73,7 +84,7 @@ LLM 이 뽑은 값은 `normalize` 가 형식을 다시 검사하고, 틀린 값(
 2. 날짜를 말하지 않았거나 '빠른 시일 내'면 → 1일 뒤, 2일 뒤, 3일 뒤
 3. 편명 조회에서 공항을 말하지 않았으면 → 다음 공항
 
-- 상한: `REPLAN_LIMIT = 3` (NF3004). 상한에 닿으면 멈추고 "재계획 상한에 도달"과 조건 변경 제안을 답한다.
+- 상한: `REPLAN_LIMIT = 3` (NF3004). 재계획을 3번 해도 후보가 없으면 멈추고 "재계획 상한(3회)에 도달해 멈췄습니다"와 조건 변경 제안을 답한다. LangGraph `recursion_limit=40` 도 함께 둔다.
 - 재계획하지 않는 경우: `NO_KEY`, `BAD_ARGS` 처럼 다시 해도 결과가 같은 실패 → 바로 안내. 네트워크·제공기관 오류는 같은 조건으로 1회만 재시도.
 - 재계획 때 이미 받은 도구 결과는 캐시에서 재사용하고 `tool_reused` 이벤트를 남긴다.
 
@@ -90,11 +101,11 @@ LLM 이 뽑은 값은 `normalize` 가 형식을 다시 검사하고, 틀린 값(
 |---|---|
 | request_received | 질문(앞 200자), 맥락 유무 |
 | step_started / step_finished | 단계 이름, 소요 ms |
-| intent_analyzed | source(llm/rule), intent, reason(LLM 판단 이유), conditions, inherited, note |
+| intent_analyzed | source(llm/rule), intent, reason(LLM 판단 이유), conditions, groups(기준·선호·제약), empty(비워 둔 조건), inherited, note |
 | planned | attempt, steps(도구·인자), followups(후보를 고른 뒤 부를 수 있는 후속 도구: 출발·도착 조회면 `get_flight_detail`), missing, assumptions |
 | tool_called / tool_result / tool_reused | 도구, 인자, ok, 실패 코드, 소요 ms, 건수 |
 | replanned | attempt, reason |
-| judged | decision, 후보·제외 수, 판단 기준, 고른 편 |
+| judged | decision, 후보·제외 수, rejected_reasons(사유별 제외 수), 판단 기준, 고른 편, date_estimated |
 | detail_skipped | 상세 조회를 생략한 이유 |
 | responded, memory_updated | 응답 길이·카드 수, 맥락 요약 |
 | engine_fallback | langgraph 가 없을 때 같은 순서로 직접 실행했다는 사실 |

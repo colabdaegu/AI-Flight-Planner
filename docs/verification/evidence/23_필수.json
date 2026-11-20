@@ -1,0 +1,312 @@
+{
+  "no": 23,
+  "requirement": "필수 · NF3005",
+  "item": "대표 시나리오 5종 이상과 처리 시간",
+  "status": "통과",
+  "note": "6개 유형 모두 기대대로. 처리 시간 S1 3.1s, S2 2.5s, S3 3.3s, S4 2.7s, S5 1.3s, S6 4.3s",
+  "elapsed_ms": 0,
+  "evidence": {
+    "scenarios": [
+      {
+        "id": "S1",
+        "type": "한 번에 충족",
+        "request": "내일 인천공항에 9시 도착하는데 탈 수 있는 오사카행 항공편",
+        "expected": "공항 도착 9:00+준비 120분 이후 출발 편 중 가장 이른 편 추천, 이른 편은 '준비 시간 부족'으로 제외, 재계획 없음",
+        "matched": true,
+        "elapsed_ms": 3116,
+        "replans": 0,
+        "steps": "analyze(1226ms) → plan(4ms) → execute(1798ms) → judge(4ms) → enrich(3ms) → respond(3ms)",
+        "tools": [
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "ICN",
+              "date": "20261121"
+            },
+            "role": "candidates",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 1507,
+            "count": 544
+          },
+          {
+            "tool": "get_incheon_passenger_forecast",
+            "args": {
+              "selectdate": "1"
+            },
+            "role": "support",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 270,
+            "count": 25
+          }
+        ],
+        "answer": "추천: 대한항공 KE727 — 2026-11-21 11:05 인천국제공항(ICN) 출발 → 오사카/ 간사이(KIX)\n- 상태 예정 · 탑승구 241 · 터미널 P03 · 공동운항 JL5270 (같은 비행기)\n- 늦어도 공항 도착 09:05 (출발 11:05에서 짐·보안검색 여유 120분을 뺀 역산)\n- 체크인 마감(추정) 10:05 (국제선 출발 60분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)\n- 참고: 9시대 인천국제공항 예상 인원 T1 출국 4,380명(오늘 최대의 92%), T2 출국 2,521명(오늘 최대의 53%).\n다른 후보:\n- 12:00 진에어 LJ329 → 오사카/ 간사이(KIX) · 예정 · 탑승구 209 · P03\n- 12:10 트리니티항공 TW303 → 오사카/ 간사이(KIX) · 예정 · 탑승구 6 · P01\n- 12:40 에어부산 BX331 → 오사카/ 간사이(KIX) · 예정 · 탑승구 285 · P03 · 공동운항 OZ9570\n판단 기준: 공항 도착 09:00 + 준비 120분 = 11:00 이후 출발하는 편 · 목적지 오사카(이타미)(ITM), 오사카(간사이)(KIX)\n제외한 후보: 준비 시간 부족 16편(7C1301 07:00, RS301 07:15, OZ112 07:20 외)\n준비 시간은 국제선 기본값 120분으로 계산했습니다.\n근거 자료: 인천국제공항공사 여객기 운항 현황, 인천국제공항공사 승객 예고\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+        "session_id": "verify-11201548-c08-osaka",
+        "diff": "없음"
+      },
+      {
+        "id": "S2",
+        "type": "재계획 필요",
+        "request": "김포에서 제주 가는 가장 빠른 편, 23시 59분 이후로",
+        "expected": "23:59 이후 편이 없어 시간 조건을 풀고(또는 다음 날로) 재계획 → 추천, 같은 입력 재호출 없음",
+        "matched": true,
+        "elapsed_ms": 2494,
+        "replans": 1,
+        "steps": "analyze(1723ms) → plan(4ms) → execute(631ms) → [재계획 1: 조건을 만족하는 편이 없음 → 시간 조건을 풀고 같은 날 전체를 다시 조회] → judge(3ms) → plan(4ms) → execute(11ms) → judge(3ms) → enrich(7ms) → respond(3ms)",
+        "tools": [
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261120",
+              "from_time": "2359",
+              "to_time": "2359",
+              "destination": "CJU"
+            },
+            "role": "candidates",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 391,
+            "count": 0
+          },
+          {
+            "tool": "get_airport_congestion",
+            "args": {
+              "airport": "GMP"
+            },
+            "role": "support",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 217,
+            "count": 1
+          },
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261120",
+              "destination": "CJU"
+            },
+            "role": "candidates",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 0,
+            "count": 34
+          },
+          {
+            "tool": "get_airport_congestion",
+            "args": {
+              "airport": "GMP"
+            },
+            "reused": true
+          },
+          {
+            "tool": "get_flight_detail",
+            "args": {
+              "airport": "GMP",
+              "flight_no": "KE1143",
+              "date": "20261120",
+              "direction": "departure"
+            },
+            "role": "detail",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 0,
+            "count": 1
+          }
+        ],
+        "answer": "추천: 대한항공 KE1143 — 2026-11-20 15:55 김포국제공항(GMP) 출발 → 제주국제공항(CJU)\n- 상태 탑승장 입장 · 탑승구 9\n- 늦어도 공항 도착 14:55 (출발 15:55에서 짐·보안검색 여유 60분을 뺀 역산)\n- 체크인 마감(추정) 15:25 (국내선 출발 30분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)\n- 참고: 김포국제공항 국내선 지금(15:45) 혼잡 1.0단계 (실시간 값이라 공항 도착 시각의 혼잡과는 다를 수 있음).\n다른 후보:\n- 16:05 제주항공 7C131 → 제주국제공항(CJU) · 탑승장 입장\n- 16:25 대한항공 KE1157 → 제주국제공항(CJU) · 지연\n- 16:35 제주항공 7C133 → 제주국제공항(CJU) · 지연\n판단 기준: 지금(15:48) 이후 출발하는 편 · 목적지 제주국제공항(CJU) · 그중 가장 이른 편\n재계획 1회: 조건을 만족하는 편이 없음 → 시간 조건을 풀고 같은 날 전체를 다시 조회\n가정: 날짜를 말하지 않아 오늘부터 찾았습니다.\n근거 자료: 한국공항공사 실시간 운항 정보, 한국공항공사 공항 혼잡도(실시간), 한국공항공사 실시간 운항 정보(info)\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+        "session_id": "verify-11201548-c09-replan",
+        "diff": "없음"
+      },
+      {
+        "id": "S3",
+        "type": "상한 도달",
+        "request": "빠른 시일 내에 김포에서 센다이 가는 편",
+        "expected": "김포→센다이 편이 없어 재계획 3회 후 멈추고 '재계획 상한에 도달'과 조건 변경 제안",
+        "matched": true,
+        "elapsed_ms": 3317,
+        "replans": 3,
+        "steps": "analyze(1474ms) → plan(4ms) → execute(446ms) → [재계획 1: 조건을 만족하는 편이 없음 → 1일 뒤 날짜로 넓혀 다시 조회] → judge(3ms) → plan(4ms) → execute(388ms) → [재계획 2: 조건을 만족하는 편이 없음 → 2일 뒤 날짜로 넓혀 다시 조회] → judge(4ms) → plan(4ms) → execute(407ms) → [재계획 3: 조건을 만족하는 편이 없음 → 3일 뒤 날짜로 넓혀 다시 조회] → judge(3ms) → plan(4ms) → execute(419ms) → judge(3ms) → respond(3ms)",
+        "tools": [
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261120",
+              "destination": "SDJ"
+            },
+            "role": "candidates",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 427,
+            "count": 0
+          },
+          {
+            "tool": "get_airport_congestion",
+            "args": {
+              "airport": "GMP"
+            },
+            "role": "support",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 0,
+            "count": 1
+          },
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261121",
+              "destination": "SDJ"
+            },
+            "role": "candidates",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 377,
+            "count": 0
+          },
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261122",
+              "destination": "SDJ"
+            },
+            "role": "candidates",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 395,
+            "count": 0
+          },
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261123",
+              "destination": "SDJ"
+            },
+            "role": "candidates",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 408,
+            "count": 0
+          }
+        ],
+        "answer": "조건을 만족하는 항공편을 찾지 못했습니다 (마지막으로 찾은 날짜 2026-11-23).\n재계획 상한(3회)에 도달해 멈췄습니다.\n조건을 바꿔 보십시오: 다른 출발 공항(예: 김포·김해), 다른 날짜, 또는 시간 조건 완화.\n판단 기준: 목적지 센다이(SDJ) · 그중 가장 이른 편\n재계획 3회: 조건을 만족하는 편이 없음 → 1일 뒤 날짜로 넓혀 다시 조회 / 조건을 만족하는 편이 없음 → 2일 뒤 날짜로 넓혀 다시 조회 / 조건을 만족하는 편이 없음 → 3일 뒤 날짜로 넓혀 다시 조회\n가정: 날짜를 말하지 않아 오늘부터 찾았습니다.\n근거 자료: 한국공항공사 실시간 운항 정보\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+        "session_id": "verify-11201548-c10-limit",
+        "diff": "없음"
+      },
+      {
+        "id": "S4",
+        "type": "Tool 하나 실패",
+        "request": "김포에서 제주 가는 가장 빠른 편",
+        "expected": "보조 도구(혼잡도·승객 예고)를 일부러 실패시켜도 실패를 기록하고 출발 편 추천까지 진행",
+        "matched": true,
+        "elapsed_ms": 2707,
+        "replans": 0,
+        "steps": "analyze(1352ms) → plan(4ms) → execute(613ms) → judge(3ms) → enrich(652ms) → respond(4ms)",
+        "tools": [
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261120",
+              "destination": "CJU"
+            },
+            "role": "candidates",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 592,
+            "count": 34
+          },
+          {
+            "tool": "get_airport_congestion",
+            "args": {
+              "airport": "GMP"
+            },
+            "role": "support",
+            "ok": false,
+            "code": "NETWORK",
+            "elapsed_ms": 0,
+            "count": null
+          },
+          {
+            "tool": "get_flight_detail",
+            "args": {
+              "airport": "GMP",
+              "flight_no": "KE1143",
+              "date": "20261120",
+              "direction": "departure"
+            },
+            "role": "detail",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 642,
+            "count": 1
+          }
+        ],
+        "answer": "추천: 대한항공 KE1143 — 2026-11-20 15:55 김포국제공항(GMP) 출발 → 제주국제공항(CJU)\n- 상태 탑승장 입장 · 탑승구 9\n- 늦어도 공항 도착 14:55 (출발 15:55에서 짐·보안검색 여유 60분을 뺀 역산)\n- 체크인 마감(추정) 15:25 (국내선 출발 30분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)\n- 보조 정보(한국공항공사 공항 혼잡도(실시간))는 불러오지 못했습니다.\n다른 후보:\n- 16:05 제주항공 7C131 → 제주국제공항(CJU) · 탑승장 입장\n- 16:25 대한항공 KE1157 → 제주국제공항(CJU) · 지연\n- 16:35 제주항공 7C133 → 제주국제공항(CJU) · 지연\n판단 기준: 지금(15:48) 이후 출발하는 편 · 목적지 제주국제공항(CJU) · 그중 가장 이른 편\n가정: 날짜를 말하지 않아 오늘부터 찾았습니다.\n근거 자료: 한국공항공사 실시간 운항 정보, 한국공항공사 실시간 운항 정보(info)\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+        "session_id": "verify-11201548-c07-toolfail",
+        "diff": "없음"
+      },
+      {
+        "id": "S5",
+        "type": "Tool 불필요",
+        "request": "안녕! 뭘 할 수 있어?",
+        "expected": "인사·사용법 → 계획에 도구 없음, 도구 호출 0회로 사용법 안내",
+        "matched": true,
+        "elapsed_ms": 1292,
+        "replans": 0,
+        "steps": "analyze(1213ms) → plan(3ms) → execute(0ms) → judge(4ms) → respond(3ms)",
+        "tools": [],
+        "answer": "안녕하십니까. 이런 질문에 답할 수 있습니다.\n- 출발 편 찾기: '센다이 가는 가장 빠른 편', '내일 김포에서 제주 오후 3시 이후'\n- 공항 도착 시각 기준 판단: '인천공항에 9시 도착하면 탈 수 있는 오사카행'\n- 도착 편: '인천 도착하는 나리타발 항공편'\n- 편명 조회: 'KE123 지금 어디야', 'OZ102 탑승구'\n- 혼잡도·예상 승객: '김포 혼잡도', '인천 지금 붐벼?'\n- 시설: '인천공항 출국장 약국', '면세점 위치'\n같은 대화 안에서는 '내일은?', '김포에서는?'처럼 바꾼 조건만 말해도 이어서 찾습니다.",
+        "session_id": "verify-11201548-c06-greeting",
+        "diff": "없음"
+      },
+      {
+        "id": "S6",
+        "type": "기준 다름(추정)",
+        "request": "12월 20일 김포에서 제주 가는 가장 빠른 편",
+        "expected": "자료 범위 밖 날짜 → 같은 요일 운항표로 조회하고 '추정'이라 밝힘",
+        "matched": true,
+        "elapsed_ms": 4329,
+        "replans": 0,
+        "steps": "analyze(2760ms) → plan(4ms) → execute(1127ms) → judge(5ms) → enrich(10ms) → respond(4ms)",
+        "tools": [
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261220",
+              "destination": "CJU"
+            },
+            "role": "candidates",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 1116,
+            "count": 103
+          },
+          {
+            "tool": "get_flight_detail",
+            "args": {
+              "airport": "GMP",
+              "flight_no": "RS6347",
+              "date": "20261220",
+              "direction": "departure"
+            },
+            "role": "detail",
+            "ok": true,
+            "code": null,
+            "elapsed_ms": 1,
+            "count": 1
+          }
+        ],
+        "answer": "추천: 에어서울 RS6347 — 2026-12-20 (추정) 06:00 김포국제공항(GMP) 출발 → 제주국제공항(CJU)\n- 상태 예정 · 탑승구 미배정(출발 전 다시 확인)\n- 늦어도 공항 도착 05:00 (출발 06:00에서 짐·보안검색 여유 60분을 뺀 역산)\n- 체크인 마감(추정) 05:30 (국내선 출발 30분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)\n다른 후보:\n- 06:05 진에어 LJ6301 → 제주국제공항(CJU) · 예정\n- 06:10 파라타항공 WE6501 → 제주국제공항(CJU) · 예정\n- 06:15 아시아나항공 OZ8905 → 제주국제공항(CJU) · 예정\n판단 기준: 목적지 제주국제공항(CJU) · 그중 가장 이른 편\n요청한 2026-12-20(일)은 운항 자료 제공 범위(오늘 −3일 ~ +6일) 밖이라 같은 요일인 2026-11-22(일) 운항표로 대신 조회했습니다 (추정 — 실제 운항 시각은 다를 수 있음).\n근거 자료: 한국공항공사 실시간 운항 정보, 한국공항공사 운항 목록 (탑승구는 당일 실시간 자료에만 있음)\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+        "session_id": "verify-11201548-c02-future",
+        "diff": "없음"
+      }
+    ]
+  }
+}

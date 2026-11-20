@@ -1,0 +1,110 @@
+{
+  "no": 21,
+  "requirement": "F3017 · F3018",
+  "item": "API 경로·형식, 화면이 API 호출",
+  "status": "통과",
+  "note": "대화·계획·로그 경로 분리, /docs 스키마, 화면이 /api/chat·/api/plans·/api/logs 호출 — 캡처 21_docs_paths.png·21_docs_schemas.png·21_network.png 첨부",
+  "elapsed_ms": 4,
+  "evidence": {
+    "paths": {
+      "/api/chat": [
+        "post"
+      ],
+      "/api/chat/cancel": [
+        "post"
+      ],
+      "/api/chat/{sid}": [
+        "delete"
+      ],
+      "/api/tools": [
+        "get"
+      ],
+      "/api/airports": [
+        "get"
+      ],
+      "/api/departures": [
+        "get"
+      ],
+      "/api/arrivals": [
+        "get"
+      ],
+      "/api/flight-search": [
+        "get"
+      ],
+      "/api/flights/{airport}/{flight_no}": [
+        "get"
+      ],
+      "/api/airport-info/{airport}": [
+        "get"
+      ],
+      "/api/facilities": [
+        "get"
+      ],
+      "/api/congestion/{airport}": [
+        "get"
+      ],
+      "/api/passenger": [
+        "get"
+      ],
+      "/api/commercial/{airport}": [
+        "get"
+      ],
+      "/api/plans/lookup": [
+        "get"
+      ],
+      "/api/plans": [
+        "get",
+        "post"
+      ],
+      "/api/plans/{pid}": [
+        "delete",
+        "get",
+        "put"
+      ],
+      "/api/logs": [
+        "get"
+      ],
+      "/api/logs/{sid}": [
+        "delete",
+        "get"
+      ],
+      "/api/logs/{sid}/audit": [
+        "get"
+      ]
+    },
+    "schemas": [
+      "AuditBrief",
+      "AuditOut",
+      "CancelIn",
+      "ChatData",
+      "ChatIn",
+      "ChatOut",
+      "DeletedOut",
+      "ErrorBody",
+      "ErrorOut",
+      "Event",
+      "HTTPValidationError",
+      "LogDetail",
+      "LogDetailOut",
+      "LogListOut",
+      "LogSession",
+      "Plan",
+      "PlanIn",
+      "PlanListOut",
+      "PlanOut",
+      "PlanSaved",
+      "PlanSavedOut",
+      "ValidationError"
+    ],
+    "screen_calls_api": {
+      "대화": true,
+      "계획 관리": true,
+      "실행 로그": true
+    },
+    "screens": [
+      "21_docs_paths.png",
+      "21_docs_schemas.png",
+      "21_network.png"
+    ]
+  }
+}

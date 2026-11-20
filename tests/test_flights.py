@@ -272,8 +272,9 @@ def test_flight_search_attaches_arrival_time(monkeypatch):
            "estimated": "2026-11-20 09:03", "flight_no": "KE1041"}
     arr = {"airport": "CJU", "direction": "arrival", "origin_code": "GMP", "scheduled": "2026-11-20 09:55",
            "estimated": "2026-11-20 10:08", "flight_no": "KE1041"}
+    monkeypatch.setattr(flights, "today_kst", lambda: "20261120")
     monkeypatch.setattr(flights, "_match_airport",
-                        lambda c, no, ymd: [dict(dep)] if c == "GMP" else ([dict(arr)] if c == "CJU" else []))
+                        lambda c, no, ymd, errors=None: [dict(dep)] if c == "GMP" else ([dict(arr)] if c == "CJU" else []))
     monkeypatch.setattr(flights, "_kac_info", lambda *a: [{"gate": "7"}])
     res = flights.search_flight("KE1041", date="20261120")
     assert res["count"] == 1
@@ -288,7 +289,9 @@ def test_flight_search_finds_next_day_arrival_and_keeps_both_legs(monkeypatch):
     arr = {"airport": "CJU", "direction": "arrival", "origin_code": "GMP", "scheduled": "2026-11-21 00:35",
            "flight_no": "7C199", "gate": None}
 
-    def match(c, no, ymd):
+    monkeypatch.setattr(flights, "today_kst", lambda: "20261120")
+
+    def match(c, no, ymd, errors=None):
         if c == "GMP" and ymd == "20261120":
             return [dict(dep)]
         if c == "CJU" and ymd == "20261121":
@@ -306,7 +309,7 @@ def test_flight_search_finds_next_day_arrival_and_keeps_both_legs(monkeypatch):
 def test_flight_search_overseas_side_is_empty(monkeypatch):
     dep = {"airport": "ICN", "direction": "departure", "destination_code": "SEA", "scheduled": "2026-11-20 16:10",
            "flight_no": "KE41", "gate": "224", "terminal": "P03"}
-    monkeypatch.setattr(flights, "_match_airport", lambda c, no, ymd: [dict(dep)] if c == "ICN" else [])
+    monkeypatch.setattr(flights, "_match_airport", lambda c, no, ymd, errors=None: [dict(dep)] if c == "ICN" else [])
     res = flights.search_flight("KE041", date="20261120")
     row = res["flights"][0]
     assert row["legs"]["departure"]["gate"] == "224"

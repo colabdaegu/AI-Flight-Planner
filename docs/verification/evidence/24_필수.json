@@ -1,0 +1,26 @@
+{
+  "no": 24,
+  "requirement": "필수",
+  "item": "실행 로그 샘플 (전체 1건 + 재계획)",
+  "status": "통과",
+  "note": "docs/samples/ 에 full_run_S1.json, replan_S2.json, replan_limit_S3.json, tool_failure_S4.json",
+  "elapsed_ms": 18,
+  "evidence": {
+    "full_run_S1": {
+      "file": "docs/samples/full_run_S1.json",
+      "events": 23
+    },
+    "replan_S2": {
+      "file": "docs/samples/replan_S2.json",
+      "events": 35
+    },
+    "replan_limit_S3": {
+      "file": "docs/samples/replan_limit_S3.json",
+      "events": 50
+    },
+    "tool_failure_S4": {
+      "file": "docs/samples/tool_failure_S4.json",
+      "events": 24
+    }
+  }
+}

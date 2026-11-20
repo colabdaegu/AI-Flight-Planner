@@ -1,0 +1,89 @@
+기준일(KST): 2026-11-20  ·  대상: all
+
+== 인천공항 (인천국제공항공사) ==
+[OK] 인천 운항현황 - 출발 (statusOfAllFltDeOdp)
+       전체 1186건 중 5건 수신
+       첫 건: flightId=9G401  airline=썬푸꾸옥항공  airportCode=SGN  airport=호찌민  scheduleDatetime=202611200010  estimatedDatetime=202611200001
+
+[OK] 인천 운항현황 - 도착 (statusOfAllFltDeOdp)
+       전체 1179건 중 5건 수신
+       첫 건: flightId=KE714Y  airline=대한항공  airport=도쿄/나리타  scheduleDatetime=202611200005  estimatedDatetime=202611200009  gateNumber=231
+
+[OK] 인천 승객예고 오늘 (passgrAnncmt)
+       전체 25건 중 10건 수신
+       첫 건: adate=20261120  atime=00_01  t1egsum1=455.0  t1dgsum1=869.0  t2dgsum2=0.0
+
+[OK] 인천 승객예고 내일 (passgrAnncmt)
+       전체 25건 중 10건 수신
+       첫 건: adate=20261121  atime=00_01  t1egsum1=282.0  t1dgsum1=773.0  t2dgsum2=0.0
+
+[OK] 인천 상업시설 정보 (StatusOfFacility, 입국장 A / 출국장 D)
+       전체 1198건 중 10건 수신
+       첫 건: entrpskoreannm=화장실  trtmntprdlstkoreannm=None  lckoreannm=탑승동 3층 동편 107번 탑승구 부  servicetime=None  arrordep=D  tel=None
+       입국장(A) 0건 · 출국장(D) 10건 (이 페이지 기준)
+
+[OK] 인천 여객기 도착 (StatusOfPassengerFlightsDeOdp)
+       전체 1179건 중 5건 수신
+       첫 건: flightId=KE714Y  airline=대한항공  airportCode=NRT  airport=도쿄/나리타  scheduleDateTime=202611200005  estimatedDateTime=202611200009
+
+[OK] 인천 여객기 출발 (StatusOfPassengerFlightsDeOdp)
+       전체 1186건 중 5건 수신
+       첫 건: flightId=9G401  airline=썬푸꾸옥항공  airportCode=SGN  airport=호찌민  scheduleDateTime=202611200010  estimatedDateTime=202611200001
+
+== 한국공항공사 ==
+-- 공항 혼잡도 (v1·v2, 공항별로 확인) --
+[OK] GMP 혼잡도 — v1 응답에 GMP 있음 · 전체 5건 중 5건 수신
+       한 시점 값: IATA_APCD=GMP, PRC_HR=15:45, CGDR_A_LVL=1.0, CGDR_B_LVL=1.0, CGDR_C_LVL=1.0, CGDR_ALL_LVL=1.0
+[OK] CJU 혼잡도 — v1 응답에 CJU 있음 · 전체 5건 중 5건 수신
+       한 시점 값: IATA_APCD=CJU, PRC_HR=15:45, CGDR_A_LVL=1.0, CGDR_B_LVL=1.0, CGDR_C_LVL=1.0, CGDR_ALL_LVL=1.0
+-- 공항별 실시간 운항 (출발·도착·국내정보·국제정보) --
+[OK] GMP 출발 — 전체 243건 중 5건 수신
+[OK] GMP 도착 — 전체 244건 중 5건 수신
+[OK] GMP 국내정보 — 전체 180건 중 10건 수신
+[OK] GMP 국제정보 — 전체 63건 중 10건 수신
+[OK] CJU 출발 — 전체 304건 중 5건 수신
+[OK] CJU 도착 — 전체 274건 중 5건 수신
+[OK] CJU 국내정보 — 전체 265건 중 10건 수신
+[OK] CJU 국제정보 — 전체 39건 중 10건 수신
+-- 공항 단위가 아닌 서비스 --
+[FAIL] 전국공항 시간대별 탑승승객 수 (daily-expect-passenger, 김해)
+       HTTP 400 · {   "OpenAPI_ServiceResponse": {     "cmmMsgHeader": {       "errMsg": "NO_OPENAPI_SERVICE_ERROR",       "returnAuthMsg": "해당 오픈API 서비스가 없거나 폐기됨",       "returnReasonCode": "12"     }   } }
+
+[CHECK] 전국공항 시간대별 탑승승객 수 (daily-expect-passenger/info, 김해)
+       명세 항목 없음: __field_names_unknown__ · 실제 항목: ARP, AOD, SDT, HH, PCT, TOF
+       첫 건: __field_names_unknown__=None
+       항목: ARP, AOD, SDT, HH, PCT, TOF
+       첫 건 전체: ARP=PUS, AOD=D, SDT=20261120, HH=22, PCT=875, TOF=I
+
+[FAIL] 전국공항 시간대별 탑승승객 수 (daily-expect-passenger/list, 김해)
+       HTTP 400 · {   "OpenAPI_ServiceResponse": {     "cmmMsgHeader": {       "errMsg": "NO_OPENAPI_SERVICE_ERROR",       "returnAuthMsg": "해당 오픈API 서비스가 없거나 폐기됨",       "returnReasonCode": "12"     }   } }
+
+[OK] 전국공항 임대계약 정보 (airport-lease-contract, 김포)
+       전체 5건 중 5건 수신
+       첫 건: storeName=와우로지스틱스  typeOfBusiness=화물창고업  leaseLocation=하늘길 210 구화물청사  airportCode=GMP  contractEndDate=2026-12-31
+
+[FAIL] 공항 상업시설 임대계약 (airport-retail-contract, 앱에서는 더 쓰지 않음)
+       제공기관 결과코드 04 · HTTP 에러
+
+[OK] 실시간 항공운항 현황 상세 (flight-status/detail)
+       전체 5064건 중 5건 수신
+       첫 건: AIR_FLN=ZE781A  AIRPORT=CJJ  STD=0005  ETD=0004  FLIGHT_DATE=20261119  IO=O
+       전체 5064건. 현재 앱 코드는 500건까지만 읽으므로, 전체가 500을 넘으면 편명 검색에서 누락될 수 있음
+
+
+공항별 요약 (OK 수신 · NO 0건 · CHK 항목명 다름 · FAIL 실패 · - 대상 아님)
+공항    출발        도착        국내정보      국제정보      혼잡도     
+GMP     OK        OK        OK        OK        OK      
+CJU     OK        OK        OK        OK        OK      
+
+요약: OK=19  FAIL=3  CHECK=1
+
+FAIL (서비스별 활용신청·승인, 호출 주소, 일일 한도 확인. 원문은 위 줄에 있음):
+  - 전국공항 시간대별 탑승승객 수 (daily-expect-passenger, 김해) [-]: HTTP 400 · {   "OpenAPI_ServiceResponse": {     "cmmMsgHeader": {       "errMsg": "NO_OPENAPI_SERVICE_ERROR",       "returnAuthMsg": "해당 오픈API 서비스가 없거나 폐기됨",       "returnReasonCode": "12"     }   } }
+  - 전국공항 시간대별 탑승승객 수 (daily-expect-passenger/list, 김해) [-]: HTTP 400 · {   "OpenAPI_ServiceResponse": {     "cmmMsgHeader": {       "errMsg": "NO_OPENAPI_SERVICE_ERROR",       "returnAuthMsg": "해당 오픈API 서비스가 없거나 폐기됨",       "returnReasonCode": "12"     }   } }
+  - 공항 상업시설 임대계약 (airport-retail-contract, 앱에서는 더 쓰지 않음) [-]: 제공기관 결과코드 04 · HTTP 에러
+
+CHECK (명세 항목명과 실제 응답이 다름 → 실제 항목명으로 파서 수정 필요):
+  - 전국공항 시간대별 탑승승객 수 (daily-expect-passenger/info, 김해) [-]: 명세 항목 없음: __field_names_unknown__ · 실제 항목: ARP, AOD, SDT, HH, PCT, TOF
+
+출발 자료가 확인된 한국공항공사 공항: CJU, GMP

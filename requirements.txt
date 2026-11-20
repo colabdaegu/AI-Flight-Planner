@@ -10,5 +10,6 @@ pydantic==2.13.5
 langgraph==1.2.10
 langchain-openai==1.4.3
 
-# 테스트
+# 테스트 · 검증 (verify/run_checks.py 가 셀프 체크리스트 xlsx 를 쓸 때 openpyxl 사용)
 pytest==9.1.1
+openpyxl==3.1.5

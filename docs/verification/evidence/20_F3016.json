@@ -1,0 +1,67 @@
+{
+  "no": 20,
+  "requirement": "F3016",
+  "item": "계획 수정·삭제와 화면 반영",
+  "status": "통과",
+  "note": "API 수정·삭제 → 목록 반영 확인, 화면 캡처 전·후 2장(20_plan_before.png · 20_plan_after.png) 첨부",
+  "elapsed_ms": 28,
+  "evidence": {
+    "update_response": {
+      "ok": true,
+      "data": {
+        "plan": {
+          "id": 26,
+          "title": "검증 계획 A (수정)",
+          "airport": "GMP",
+          "flight_no": "ZZ901",
+          "flight_date": "2026-11-25",
+          "scheduled": "2026-11-25 13:00",
+          "estimated": null,
+          "buffer_min": 60,
+          "user_arrival": "2026-11-25 11:50",
+          "arrive_by": "2026-11-25 12:00",
+          "created_at": "2026-11-20T15:49:09",
+          "memo": "수정됨",
+          "destination": null,
+          "line": "domestic",
+          "checkin_deadline": "2026-11-25 12:00",
+          "checkin_min": 60,
+          "time_source": "manual",
+          "arrival_auto": 0
+        },
+        "warnings": []
+      }
+    },
+    "after_update": {
+      "id": 26,
+      "title": "검증 계획 A (수정)",
+      "airport": "GMP",
+      "flight_no": "ZZ901",
+      "flight_date": "2026-11-25",
+      "scheduled": "2026-11-25 13:00",
+      "estimated": null,
+      "buffer_min": 60,
+      "user_arrival": "2026-11-25 11:50",
+      "arrive_by": "2026-11-25 12:00",
+      "created_at": "2026-11-20T15:49:09",
+      "memo": "수정됨",
+      "destination": null,
+      "line": "domestic",
+      "checkin_deadline": "2026-11-25 12:00",
+      "checkin_min": 60,
+      "time_source": "manual",
+      "arrival_auto": 0
+    },
+    "delete_http": 200,
+    "list_after_delete": [
+      19,
+      23,
+      26
+    ],
+    "screen_reloads_list_after_save_delete": true,
+    "screens": [
+      "20_plan_before.png",
+      "20_plan_after.png"
+    ]
+  }
+}

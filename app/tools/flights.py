@@ -7,7 +7,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
-from app import airports
+from app import airports, config
 from app.tools.common import ApiError, fetch, flight_no_key, maps_link, pick, to_dt
 from app.tools.registry import Tool, register
 
@@ -40,12 +40,47 @@ def _airport(code):
     return code
 
 
+WEEKDAYS = "월화수목금토일"
+
+
 def _date(ymd):
+    """날짜 형식 확인. 비우면 오늘(KST)이 기본값이다 (F3002)."""
     if not ymd:
         return today_kst()
+    ymd = str(ymd).strip()
+    try:
+        datetime.strptime(ymd, "%Y%m%d")
+    except ValueError:
+        raise ValueError("날짜는 YYYYMMDD 형식의 실제 날짜여야 합니다 (예: 20261120).")
     if not re.fullmatch(r"\d{8}", ymd):
-        raise ValueError("날짜는 YYYYMMDD 형식이어야 합니다.")
+        raise ValueError("날짜는 YYYYMMDD 형식의 실제 날짜여야 합니다 (예: 20261120).")
     return ymd
+
+
+def _label(ymd):
+    d = datetime.strptime(ymd, "%Y%m%d")
+    return f"{d:%Y-%m-%d}({WEEKDAYS[d.weekday()]})"
+
+
+def resolve_date(ymd):
+    """요청한 날짜를 실제로 조회할 날짜로 바꾼다. 반환: (조회 날짜, 요청 날짜, 추정 안내 또는 None).
+
+    운항 공공데이터(인천국제공항공사·한국공항공사)는 오늘 −3일 ~ +6일 자료만 준다 (config.DATA_DAYS_*).
+    그 밖의 날짜는 지어내지 않고, 범위 안에서 같은 요일인 날 중 요청일에 가장 가까운 날의 운항표로 대신 조회한 뒤
+    '추정'이라고 밝힌다 (명세 F3002: 요청한 기준과 실제로 조회한 기준이 다르면 응답에 밝힌다)."""
+    requested = _date(ymd)
+    today = datetime.strptime(today_kst(), "%Y%m%d")
+    want = datetime.strptime(requested, "%Y%m%d")
+    first = today - timedelta(days=config.DATA_DAYS_BEFORE)
+    last = today + timedelta(days=config.DATA_DAYS_AFTER)
+    if first <= want <= last:
+        return requested, requested, None
+    days = [first + timedelta(days=i) for i in range((last - first).days + 1)]
+    same = [d for d in days if d.weekday() == want.weekday()]
+    got = min(same, key=lambda d: abs((d - want).days)).strftime("%Y%m%d")
+    note = (f"요청한 {_label(requested)}은 운항 자료 제공 범위(오늘 −{config.DATA_DAYS_BEFORE}일 ~ +{config.DATA_DAYS_AFTER}일) 밖이라 "
+            f"같은 요일인 {_label(got)} 운항표로 대신 조회했습니다 (추정 — 실제 운항 시각은 다를 수 있음).")
+    return got, requested, note
 
 
 def _hhmm(value, default):
@@ -216,32 +251,36 @@ def merge_codeshares(rows):
     return out
 
 
-def _result(code, ymd, rows, fetched, total):
+def _result(code, ymd, rows, fetched, total, requested=None, estimate_note=None):
     try:
         expected = int(total)
     except (TypeError, ValueError):
         expected = None
-    notes = []
+    notes = [estimate_note] if estimate_note else []
     if not rows:
         notes.append("호출은 성공했고 조건에 맞는 운항은 0건입니다.")
     if expected and expected > fetched:
         notes.append(f"전체 {expected}건 중 {fetched}건만 받아와서 일부만 보입니다.")
     return {"airport": code, "airport_name": airports.NAMES[code], "date": ymd,
+            "requested_date": requested or ymd, "date_estimated": bool(estimate_note),
             "provider": airports.provider_of(code), "count": len(rows), "total": expected,
             "flights": rows, "note": " ".join(notes) or None}
 
 
 def _search_side(airport, date, from_time, to_time, other_filter, direction, other_key):
     code = _airport(airport)
-    ymd = _date(date)
-    f_from, f_to = _window(code, ymd, from_time, to_time)
+    ymd, requested, estimate = resolve_date(date)
+    if estimate:                                   # 다른 날 운항표로 추정할 때는 '지금 이후'가 아니라 하루 전체를 본다
+        f_from, f_to = _hhmm(from_time, "0000"), _hhmm(to_time, "2400" if code == airports.ICN else "2359")
+    else:
+        f_from, f_to = _window(code, ymd, from_time, to_time)
     other = _code_or_none(other_filter)
     rows, fetched, total = _board(code, ymd, f_from, f_to, direction, other)
     if other:                                      # 제공 API 가 거르지 못해도 한 번 더 거른다
         rows = [r for r in rows if r.get(other_key) == other]
     rows.sort(key=lambda r: r["scheduled"] or "")
     rows = merge_codeshares(rows)
-    return _result(code, ymd, rows, fetched, total)
+    return _result(code, ymd, rows, fetched, total, requested, estimate)
 
 
 def search_departures(airport, date=None, from_time=None, to_time=None, destination=None):
@@ -252,13 +291,17 @@ def search_arrivals(airport, date=None, from_time=None, to_time=None, origin=Non
     return _search_side(airport, date, from_time, to_time, origin, "arrival", "origin_code")
 
 
-def _match_airport(code, no, ymd):
+def _match_airport(code, no, ymd, errors=None):
     f_to = "2400" if code == airports.ICN else "2359"
     rows = []
     for direction in ("departure", "arrival"):
         try:
             board, _, _ = _board(code, ymd, "0000", f_to, direction)
-        except ApiError:
+        except ApiError as e:
+            if errors is not None:
+                errors.append(e)
+            if e.code == "NO_KEY":               # 키가 없으면 다른 공항도 같으니 바로 알린다
+                raise
             continue
         rows += [r for r in board if _flight_no(r["flight_no"]) == no
                  or no in [_flight_no(c) for c in (r.get("codeshares") or [])]]
@@ -307,12 +350,14 @@ def search_flight(flight_no, airport=None, date=None):
     no = _flight_no(flight_no)
     if not no:
         raise ValueError("편명을 입력하십시오 (예: KE1041).")
-    ymd = _date(date)
+    ymd, requested, estimate = resolve_date(date)
     codes = [_airport(airport)] if airport else [airports.ICN, *airports.KAC_AIRPORTS]
-    rows = []
+    rows, errors = [], []
     with ThreadPoolExecutor(max_workers=8) as pool:
-        for found in pool.map(lambda c: _match_airport(c, no, ymd), codes):
+        for found in pool.map(lambda c: _match_airport(c, no, ymd, errors), codes):
             rows += found
+    if not rows and errors and len(errors) >= 2 * len(codes):   # 모든 공항·방향이 실패: 0건이 아니라 실패로 알린다
+        raise errors[0]
     deps = [r for r in rows if r["direction"] == "departure"]
     arrs = [r for r in rows if r["direction"] == "arrival"]
     used = set()
@@ -355,9 +400,13 @@ def search_flight(flight_no, airport=None, date=None):
         result.append(row)
     result.sort(key=lambda r: (r.get("scheduled") or "", r["direction"] != "departure"))
     first = result[0]["airport"] if result else (codes[0] if len(codes) == 1 else airports.ICN)
+    notes = [estimate] if estimate else []
+    if not result:
+        notes.append(f"{_fmt(ymd)} 국내 {len(codes)}개 공항의 출발·도착 목록에 {no} 편이 없습니다.")
     return {"airport": first, "airport_name": airports.NAMES[first], "flight_no": no, "date": ymd,
+            "requested_date": requested, "date_estimated": bool(estimate),
             "provider": None, "count": len(result), "flights": result, "searched": len(codes),
-            "note": None if result else f"{_fmt(ymd)} 국내 {len(codes)}개 공항의 출발·도착 목록에 {no} 편이 없습니다."}
+            "note": " ".join(notes) or None}
 
 
 def _fmt(ymd):
@@ -410,7 +459,7 @@ def get_flight_detail(airport, flight_no, date=None, direction="departure"):
         raise ValueError("편명을 입력하십시오 (예: KE1041).")
     if direction not in ("departure", "arrival"):
         raise ValueError("direction 은 departure 또는 arrival 이어야 합니다.")
-    ymd = _date(date)
+    ymd, requested, estimate = resolve_date(date)
     if code == airports.ICN:
         rows, _, _ = _board(code, ymd, "0000", "2400", direction)
         rows = [r for r in rows if _flight_no(r["flight_no"]) == no]
@@ -422,15 +471,21 @@ def get_flight_detail(airport, flight_no, date=None, direction="departure"):
         rows, _, _ = _board(code, ymd, "0000", "2359", direction)
         rows = [r for r in rows if _flight_no(r["flight_no"]) == no]
         source = "한국공항공사 운항 목록 (탑승구는 당일 실시간 자료에만 있음)"
+    notes = [estimate] if estimate else []
+    if not rows:
+        notes.append("해당 편명·날짜의 운항 정보가 없습니다.")
     return {"airport": code, "airport_name": airports.NAMES[code], "flight_no": no, "date": ymd,
+            "requested_date": requested, "date_estimated": bool(estimate),
             "direction": direction, "count": len(rows), "rows": rows, "source": source,
-            "note": None if rows else "해당 편명·날짜의 운항 정보가 없습니다."}
+            "note": " ".join(notes) or None}
 
 
 register(Tool(
     name="search_departures",
-    description="공항의 출발 운항 시간표 조회. 인천(ICN)은 인천공항공사, 그 외는 한국공항공사 자료. "
-                "날짜(YYYYMMDD)를 생략하면 오늘. 목적지 IATA 코드로 거를 수 있다.",
+    description="어느 공항에서 떠나는 항공편 후보를 찾을 때 쓴다 (출발 시간표, 가장 빠른 편, 어디로 가는 편). "
+                "인천(ICN)은 인천공항공사, 그 외는 한국공항공사 자료. 날짜(YYYYMMDD)를 생략하면 오늘. "
+                "자료는 오늘 −3일 ~ +6일만 있어 그 밖의 날짜는 같은 요일 운항표로 추정하고 note 에 밝힌다. "
+                "목적지 IATA 코드로 거를 수 있다.",
     parameters={"type": "object", "properties": {
         "airport": {"type": "string", "description": "출발 공항 IATA 코드 (ICN, GMP, CJU, PUS 등)"},
         "date": {"type": "string", "description": "YYYYMMDD"},
@@ -442,7 +497,9 @@ register(Tool(
 
 register(Tool(
     name="search_arrivals",
-    description="공항의 도착 운항 시간표 조회. 날짜(YYYYMMDD)를 생략하면 오늘. 출발지 IATA 코드로 거를 수 있다.",
+    description="어느 공항에 들어오는(도착하는) 항공편 후보를 찾을 때 쓴다. 날짜(YYYYMMDD)를 생략하면 오늘. "
+                "자료는 오늘 −3일 ~ +6일만 있어 그 밖의 날짜는 같은 요일 운항표로 추정하고 note 에 밝힌다. "
+                "출발지 IATA 코드로 거를 수 있다.",
     parameters={"type": "object", "properties": {
         "airport": {"type": "string", "description": "도착 공항 IATA 코드 (ICN, GMP 등)"},
         "date": {"type": "string", "description": "YYYYMMDD"},

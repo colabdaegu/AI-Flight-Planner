@@ -9,11 +9,11 @@
 """
 import time
 import uuid
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app import airports, checkin
 from app.agent import cancel
@@ -21,7 +21,7 @@ from app.agent.graph import run_agent
 from app.agent.memory import memory
 from app.events import bus
 from app.logger_agent import SCREEN_SESSION, attach_logger
-from app.store.plans import PlanError, PlanStore
+from app.store.plans import DEFAULT_BUFFER, PlanError, PlanStore, deadline_of
 from app.tools import registry
 from app.tools.common import fail, ok
 
@@ -52,6 +52,140 @@ class PlanIn(BaseModel):
     user_arrival: Optional[str] = None       # 비우면 권장 도착 시각으로 채운다
 
 
+# ---------------- 응답 형식 (F3017: 요청·응답을 Pydantic 모델로 정의, /docs 에 표시) ----------------
+class _Open(BaseModel):
+    model_config = ConfigDict(extra="allow")       # 문서용 모델: 정의하지 않은 필드도 그대로 내보낸다
+
+
+class ErrorBody(BaseModel):
+    code: str = Field(description="실패 코드 (BAD_ARGS, NOT_FOUND, NO_KEY, INTERNAL …)")
+    message: str = Field(description="화면에 보여 줄 안내 (키·내부 오류 상세는 넣지 않음)")
+
+
+class ErrorOut(BaseModel):
+    ok: bool = False
+    error: ErrorBody
+
+
+class Event(_Open):
+    event: str = Field(description="request_received, step_started, intent_analyzed, planned, tool_called, tool_result, "
+                                   "replanned, judged, responded, memory_updated …")
+    session_id: str
+    ts: str
+    payload: Dict[str, Any]
+
+
+class AuditBrief(_Open):
+    run_index: int
+    status: str = Field(description="normal / anomaly / undetermined")
+    status_label: Optional[str] = None
+    warnings: List[Dict[str, Any]] = []
+    diagnosis: Optional[Dict[str, Any]] = None
+
+
+class ChatData(_Open):
+    session_id: str
+    answer: Optional[str] = Field(description="추천 · 판단 기준 · 제외한 후보 · 가정 · 근거 자료를 담은 답")
+    cards: Optional[Dict[str, Any]] = Field(default=None, description="추천 항공편 카드 {airport, date, chosen, flights[]}")
+    intent: Optional[str] = None
+    intent_source: Optional[str] = Field(default=None, description="llm 또는 rule")
+    replans: int = 0
+    trace: List[Event] = Field(default_factory=list, description="이번 실행의 이벤트 (발생 순서)")
+    audit: Optional[AuditBrief] = None
+    cancelled: Optional[bool] = None
+
+
+class ChatOut(BaseModel):
+    ok: bool = True
+    data: ChatData
+
+
+class Plan(_Open):
+    id: int
+    title: str
+    memo: Optional[str] = None
+    airport: str
+    flight_no: str
+    flight_date: str = Field(description="출발 날짜 YYYY-MM-DD")
+    destination: Optional[str] = None
+    line: Optional[str] = None
+    scheduled: str
+    estimated: Optional[str] = None
+    checkin_min: Optional[int] = None
+    checkin_deadline: Optional[str] = None
+    buffer_min: int
+    user_arrival: str
+    arrive_by: Optional[str] = None
+    time_source: Optional[str] = None
+    arrival_auto: Optional[int] = None
+    created_at: str
+
+
+class PlanSaved(BaseModel):
+    plan: Plan
+    warnings: List[str] = Field(description="같은 날 시간이 겹치는 계획 등 (저장은 막지 않음)")
+
+
+class PlanSavedOut(BaseModel):
+    ok: bool = True
+    data: PlanSaved
+
+
+class PlanOut(BaseModel):
+    ok: bool = True
+    data: Plan
+
+
+class PlanListOut(BaseModel):
+    ok: bool = True
+    data: List[Plan]
+
+
+class LogSession(_Open):
+    session_id: str
+    title: str
+    kind: str
+    started: str
+    updated: str
+    events: int
+    tool_calls: int
+    replans: int
+    errors: int
+    anomalies: int
+
+
+class LogListOut(BaseModel):
+    ok: bool = True
+    data: List[LogSession]
+
+
+class LogDetail(BaseModel):
+    session_id: str
+    events: List[Event]
+
+
+class LogDetailOut(BaseModel):
+    ok: bool = True
+    data: LogDetail
+
+
+class AuditOut(BaseModel):
+    ok: bool = True
+    data: Dict[str, Any]
+
+
+class DeletedOut(BaseModel):
+    ok: bool = True
+    data: Dict[str, Any]
+
+
+ERR = {400: {"model": ErrorOut}, 404: {"model": ErrorOut}, 500: {"model": ErrorOut}}
+
+
+def _doc(model):
+    return {200: {"model": model}, **ERR}
+
+
 def _status(res):
     if res["ok"]:
         return 200
@@ -76,7 +210,7 @@ def _screen(tool, **args):
 
 
 # ---------------- 대화 ----------------
-@router.post("/chat")
+@router.post("/chat", responses=_doc(ChatOut))
 def chat(body: ChatIn):
     sid = body.session_id or uuid.uuid4().hex
     try:
@@ -230,8 +364,9 @@ def plan_lookup(airport: str = Query(..., max_length=3), flight_no: str = Query(
         return ok({"found": False, "message": why})
     line = checkin.line_of(code, found["destination"])
     dep = found["estimated"] or found["scheduled"]
-    return ok({"found": True, **found, "line": line, "checkin_min": checkin.minutes(line),
-               "checkin_deadline": checkin.deadline(dep, checkin.minutes(line)) if dep else None})
+    minutes = DEFAULT_BUFFER[line]            # 체크인 시간을 아직 안 넣었을 때의 기본값 (국내선 60 · 국제선 120분)
+    return ok({"found": True, **found, "line": line, "checkin_min": minutes,
+               "checkin_deadline": deadline_of(dep, minutes) if dep else None})
 
 
 def _save(body, pid=None):
@@ -245,18 +380,18 @@ def _save(body, pid=None):
         return e
 
 
-@router.post("/plans")
+@router.post("/plans", responses={**_doc(PlanSavedOut), 422: {"model": ErrorOut}})
 def create_plan(body: PlanIn):
     res = _save(body)
     return _plan_error(res) if isinstance(res, PlanError) else ok(res)
 
 
-@router.get("/plans")
+@router.get("/plans", responses=_doc(PlanListOut))
 def list_plans():
     return ok(store.list())
 
 
-@router.get("/plans/{pid}")
+@router.get("/plans/{pid}", responses=_doc(PlanOut))
 def get_plan(pid: int):
     plan = store.get(pid)
     if plan is None:
@@ -264,7 +399,7 @@ def get_plan(pid: int):
     return ok(plan)
 
 
-@router.put("/plans/{pid}")
+@router.put("/plans/{pid}", responses={**_doc(PlanSavedOut), 422: {"model": ErrorOut}})
 def update_plan(pid: int, body: PlanIn):
     res = _save(body, pid)
     if isinstance(res, PlanError):
@@ -274,7 +409,7 @@ def update_plan(pid: int, body: PlanIn):
     return ok(res)
 
 
-@router.delete("/plans/{pid}")
+@router.delete("/plans/{pid}", responses=_doc(DeletedOut))
 def delete_plan(pid: int):
     if not store.delete(pid):
         return _error("NOT_FOUND", "계획을 찾을 수 없습니다.", 404)
@@ -282,12 +417,12 @@ def delete_plan(pid: int):
 
 
 # ---------------- 실행 로그 (F3014) ----------------
-@router.get("/logs")
+@router.get("/logs", responses=_doc(LogListOut))
 def list_logs():
     return ok(logs.list_sessions())
 
 
-@router.get("/logs/{sid}")
+@router.get("/logs/{sid}", responses=_doc(LogDetailOut))
 def get_log(sid: str):
     try:
         events = logs.read(sid)
@@ -298,7 +433,7 @@ def get_log(sid: str):
     return ok({"session_id": sid, "events": events})
 
 
-@router.get("/logs/{sid}/audit")
+@router.get("/logs/{sid}/audit", responses=_doc(AuditOut))
 def get_log_audit(sid: str):
     """실행(질문 1건)마다 이상 징후 판정. 판정은 규칙, 진단(diagnosis)은 이상 실행에만 붙는 LLM 결과로 따로 둔다."""
     try:
@@ -311,7 +446,7 @@ def get_log_audit(sid: str):
                "summary": {s: sum(1 for r in runs if r["status"] == s) for s in ("normal", "anomaly", "undetermined")}})
 
 
-@router.delete("/logs/{sid}")
+@router.delete("/logs/{sid}", responses=_doc(DeletedOut))
 def delete_log(sid: str):
     try:
         removed = logs.delete(sid)

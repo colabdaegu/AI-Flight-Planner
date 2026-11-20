@@ -18,13 +18,12 @@ def test_overlap_boundary_is_not_overlap():
     assert overlaps("2026-11-20 07:00", "2026-11-20 08:30", "2026-11-20 08:00", "2026-11-20 09:00")
 
 
-def test_checkin_deadline_uses_typed_minutes(tmp_path):
-    """체크인 마감 = 출발 − 입력한 공항 체크인 시간(40분)."""
+def test_checkin_deadline_is_departure_minus_user_checkin_minutes(tmp_path):
     store = PlanStore(str(tmp_path / "p.sqlite3"))
-    res = store.create(plan())
+    res = store.create(plan())                                       # 출발 09:00, 체크인 40분
     p = res["plan"]
     assert (p["airport"], p["flight_no"], p["memo"]) == ("GMP", "KE123", "회의")
-    assert p["checkin_min"] == 40 and p["checkin_deadline"] == "2026-11-20 08:20" and p["arrive_by"] == "2026-11-20 08:20"
+    assert p["checkin_deadline"] == "2026-11-20 08:20" and p["checkin_min"] == 40 and p["arrive_by"] == "2026-11-20 08:20"
     assert p["time_source"] == "manual" and p["arrival_auto"] == 0 and res["warnings"] == []
 
 
@@ -34,9 +33,8 @@ def test_arrival_and_buffer_default_by_line(tmp_path):
     assert dom["buffer_min"] == 60 and dom["user_arrival"] == "2026-11-20 08:00" and dom["arrival_auto"] == 1
     lookup = {"scheduled": "2026-11-21 10:00", "estimated": None, "destination": "NRT"}
     intl = store.create(plan(line="international", user_arrival=None, buffer_min=None), lookup)["plan"]
-    # 입력이 없으면 국제선 기본 120분 → 10:00 − 120분 = 08:00
-    assert intl["checkin_min"] == 120 and intl["checkin_deadline"] == "2026-11-21 08:00"
-    assert intl["user_arrival"] == "2026-11-21 08:00"
+    assert dom["checkin_deadline"] == "2026-11-20 08:00" and dom["checkin_min"] == 60     # 비우면 국내선 60분
+    assert intl["checkin_deadline"] == "2026-11-21 08:00" and intl["user_arrival"] == "2026-11-21 08:00"   # 국제선 120분
 
 
 def test_line_mismatch_is_rejected(tmp_path):
@@ -56,14 +54,13 @@ def test_flight_lookup_wins_over_typed_time(tmp_path):
     assert p["checkin_min"] == 120 and p["checkin_deadline"] == "2026-11-20 08:20" and p["time_source"] == "flight"
 
 
-def test_arrival_after_checkin_deadline_is_rejected(tmp_path):
-    """체크인 마감(08:20)까지 도착해야 저장된다. 여유 = 마감 − 도착."""
+def test_arrival_after_deadline_is_rejected(tmp_path):
     store = PlanStore(str(tmp_path / "p.sqlite3"))
     with pytest.raises(PlanError) as e:
-        store.create(plan(user_arrival="2026-11-20 08:25"))
+        store.create(plan(user_arrival="2026-11-20 08:25"))         # 마감 08:20 보다 늦음
     assert e.value.code == "CONDITION_NOT_MET"
-    res = store.create(plan(user_arrival="2026-11-20 08:00"))
-    assert res["warnings"] == [] and res["plan"]["checkin_deadline"] == "2026-11-20 08:20"
+    res = store.create(plan(user_arrival="2026-11-20 08:20"))
+    assert res["warnings"] == []
 
 
 def test_no_time_and_no_lookup_asks_for_time(tmp_path):
@@ -85,7 +82,7 @@ def test_update_and_delete(tmp_path):
     store = PlanStore(str(tmp_path / "p.sqlite3"))
     pid = store.create(plan())["plan"]["id"]
     res = store.update(pid, plan(title="수정", buffer_min=0))
-    assert res["plan"]["title"] == "수정" and res["plan"]["arrive_by"] == "2026-11-20 09:00"
+    assert res["plan"]["title"] == "수정" and res["plan"]["checkin_deadline"] == "2026-11-20 09:00"   # 체크인 0분
     assert store.delete(pid) is True
     assert store.delete(pid) is False
 

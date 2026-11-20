@@ -17,15 +17,18 @@ KAC_AIRPORTS = {
 # 혼잡도는 공항별로 v1 / v2 엔드포인트가 나뉘어 있다 (명세 1bc76eae)
 CONGESTION_AIRPORTS = {"GMP": "v1", "CJU": "v1", "PUS": "v2", "TAE": "v2", "CJJ": "v2"}
 
-# 짧은 이름 (입력 매칭용 별칭으로 계속 쓴다)
-SHORT_NAMES = {ICN: "인천", **KAC_AIRPORTS}
-# 응답·화면에 쓰는 공항의 정식 한국어 명칭 (예: 대구 → 대구국제공항)
-NAMES = {
-    ICN: "인천국제공항", "GMP": "김포국제공항", "PUS": "김해국제공항", "CJU": "제주국제공항",
-    "TAE": "대구국제공항", "CJJ": "청주국제공항", "KWJ": "광주공항", "USN": "울산공항",
-    "HIN": "사천공항", "RSU": "여수공항", "WJU": "원주공항", "YNY": "양양국제공항",
-    "KPO": "포항경주공항", "KUV": "군산공항", "MWX": "무안국제공항",
+NAMES = {ICN: "인천", **KAC_AIRPORTS}
+# 답변·카드에 쓰는 공항의 정식 한국어 명칭 (지역 이름 대신)
+OFFICIAL = {
+    "ICN": "인천국제공항", "GMP": "김포국제공항", "PUS": "김해국제공항", "CJU": "제주국제공항", "TAE": "대구국제공항",
+    "CJJ": "청주국제공항", "KWJ": "광주공항", "USN": "울산공항", "HIN": "사천공항", "RSU": "여수공항",
+    "WJU": "원주공항", "YNY": "양양국제공항", "KPO": "포항경주공항", "KUV": "군산공항", "MWX": "무안국제공항",
 }
+
+
+def official(code, fallback=None):
+    """국내 공항이면 정식 명칭(대구 → 대구국제공항), 아니면 fallback(없으면 코드)."""
+    return OFFICIAL.get((code or "").upper()) or fallback or code or ""
 
 
 def provider_of(code):
@@ -194,7 +197,7 @@ def _entries():
     rows = []
     for code, ko in NAMES.items():
         rows.append({"code": code, "name": ko, "en": DOMESTIC_EN.get(code, code),
-                     "alias": DOMESTIC_ALIAS.get(code, []) + [SHORT_NAMES[code]], "domestic": True,
+                     "alias": DOMESTIC_ALIAS.get(code, []), "domestic": True,
                      "can_depart": provider_of(code) is not None})
     for code, ko, en, alias in INTERNATIONAL:
         rows.append({"code": code, "name": ko, "en": en, "alias": alias,

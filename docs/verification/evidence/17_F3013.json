@@ -1,0 +1,120 @@
+{
+  "no": 17,
+  "requirement": "F3013",
+  "item": "원본 그대로 저장, 저장 실패해도 대화 동작",
+  "status": "통과",
+  "note": "저장 로그 = 발행 이벤트 원본(요약·가공 없음). 저장 실패를 일으켜도 대화 정상",
+  "elapsed_ms": 6219,
+  "evidence": {
+    "raw_vs_stored_identical": true,
+    "stored_sample": [
+      {
+        "event": "request_received",
+        "session_id": "verify-11201548-c08-osaka",
+        "ts": "2026-11-20T15:48:41",
+        "payload": {
+          "message": "내일 인천공항에 9시 도착하는데 탈 수 있는 오사카행 항공편",
+          "chars": 33,
+          "has_memory": false
+        }
+      },
+      {
+        "event": "step_started",
+        "session_id": "verify-11201548-c08-osaka",
+        "ts": "2026-11-20T15:48:41",
+        "payload": {
+          "step": "analyze"
+        }
+      },
+      {
+        "event": "intent_analyzed",
+        "session_id": "verify-11201548-c08-osaka",
+        "ts": "2026-11-20T15:48:42",
+        "payload": {
+          "source": "llm",
+          "intent": "departures",
+          "reason": "내일 인천공항에 오전 9시 도착한 뒤 이용 가능한 오사카행 출발 항공편을 찾는 요청이다.",
+          "conditions": {
+            "airport": "ICN",
+            "destination": "오사카",
+            "date": "20261121",
+            "arrive_airport_at": "0900"
+          },
+          "groups": {
+            "기준": {
+              "date": "20261121",
+              "airport": "ICN"
+            },
+            "선호": {
+              "destination": "오사카"
+            },
+            "제약": {
+              "arrive_airport_at": "0900"
+            }
+          },
+          "empty": [
+            "flexible_date",
+            "from_time",
+            "flight_no",
+            "origin",
+            "earliest",
+            "keyword",
+            "to_time",
+            "buffer_min"
+          ],
+          "inherited": [],
+          "note": null
+        }
+      },
+      {
+        "event": "step_finished",
+        "session_id": "verify-11201548-c08-osaka",
+        "ts": "2026-11-20T15:48:42",
+        "payload": {
+          "step": "analyze",
+          "elapsed_ms": 1226
+        }
+      },
+      {
+        "event": "step_started",
+        "session_id": "verify-11201548-c08-osaka",
+        "ts": "2026-11-20T15:48:42",
+        "payload": {
+          "step": "plan"
+        }
+      },
+      {
+        "event": "planned",
+        "session_id": "verify-11201548-c08-osaka",
+        "ts": "2026-11-20T15:48:42",
+        "payload": {
+          "attempt": 0,
+          "steps": [
+            {
+              "tool": "search_departures",
+              "args": {
+                "airport": "ICN",
+                "date": "20261121"
+              }
+            },
+            {
+              "tool": "get_incheon_passenger_forecast",
+              "args": {
+                "selectdate": "1"
+              }
+            }
+          ],
+          "followups": [
+            "get_flight_detail"
+          ],
+          "missing": null,
+          "assumptions": []
+        }
+      }
+    ],
+    "broken_store_run": {
+      "answer": "제주국제공항 국내선 지금 혼잡 (15:45 기준, 제공기관 단계)\n- 전체 1.0단계\n- 1구간 체크인→신분확인: 1.0단계\n- 2구간 신분확인→보안검색: 1.0단계\n- 3구간 보안검색→탑승: 1.0단계\n제주국제공항 2026-11-20 시간대별 출발·도착 편수\n- 지금(15시대): 52편\n- 가장 붐비는 시간: 15시대 52편, 13시대 44편, 19시대 42편\n- 비교적 한산한 낮 시간: 6시대 (9편)\n시간대별 출발·도착 편수로 이용 흐름을 보여 줍니다 (실시간 운항 정보 기준).\n근거 자료: 한국공항공사 공항 혼잡도(실시간), 한국공항공사 시간대별 이용 흐름",
+      "http": 200
+    }
+  }
+}

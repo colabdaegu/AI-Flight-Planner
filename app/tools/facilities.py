@@ -6,7 +6,7 @@
 """
 import re
 
-from app.tools.common import fetch, pick
+from app.tools.common import fetch, maps_link, pick
 from app.tools.registry import Tool, register
 
 URL = "https://apis.data.go.kr/B551177/StatusOfFacility/getFacilityKR"
@@ -81,7 +81,8 @@ def get_incheon_facilities(keyword=None, area=None, category=None, limit=None):
         code = (pick(i, "arrordep") or "").upper()
         rows.append({"name": name, "items": goods, "location": loc, "hours": pick(i, "servicetime"),
                      "tel": pick(i, "tel"), "area": code or None, "area_name": AREA.get(code),
-                     "category": classify(name, goods), "terminal": terminal, "floor": floor})
+                     "category": classify(name, goods), "terminal": terminal, "floor": floor,
+                     "map_url": maps_link(f"인천국제공항 {name}") if name else None})
     if area:
         rows = [r for r in rows if r["area"] == area]
     if category:
@@ -102,8 +103,12 @@ def get_incheon_facilities(keyword=None, area=None, category=None, limit=None):
     count = len(rows)
     if limit:
         rows = rows[: int(limit)]
+    # 결과 없음도 실패가 아니라 정상 응답이다: count 0 + empty true + note '결과 없음: …' (F3004)
+    wanted = " · ".join(x for x in (keyword, AREA.get(area or ""), category) if x)
+    note = (f"결과 없음: 인천공항 시설 안내에 '{wanted or '조건'}'에 맞는 시설이 없습니다." if not count
+            else "분류·터미널·층은 시설 이름과 위치 글자에서 읽은 값입니다. map_url 은 구글 지도 검색 링크입니다.")
     return {"airport": "ICN", "count": count, "total": total, "rows": rows, "summary": summary,
-            "note": "분류·터미널·층은 시설 이름과 위치 글자에서 읽은 값입니다."}
+            "empty": not count, "note": note}
 
 
 register(Tool(

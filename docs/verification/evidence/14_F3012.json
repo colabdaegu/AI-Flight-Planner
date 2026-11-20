@@ -1,0 +1,58 @@
+{
+  "no": 14,
+  "requirement": "F3012 · F3013",
+  "item": "이벤트 발행·세션 저장·LLM 판단 이유",
+  "status": "통과",
+  "note": "세션 2개 모두 발행 = 저장, 섞임 없음. 의도 판단(llm) 이유: 내일 인천공항에 오전 9시 도착한 뒤 이용 가능한 오사카행 출발 항공편을 찾는 요청이다.",
+  "elapsed_ms": 9,
+  "evidence": {
+    "verify-11201548-c08-osaka": {
+      "published": 23,
+      "stored": 23,
+      "identical": true,
+      "foreign_sessions": [],
+      "kinds": [
+        "detail_skipped",
+        "intent_analyzed",
+        "judged",
+        "memory_updated",
+        "planned",
+        "request_received",
+        "responded",
+        "step_finished",
+        "step_started",
+        "tool_called",
+        "tool_result"
+      ]
+    },
+    "verify-11201548-c09-replan": {
+      "published": 35,
+      "stored": 35,
+      "identical": true,
+      "foreign_sessions": [],
+      "kinds": [
+        "intent_analyzed",
+        "judged",
+        "memory_updated",
+        "planned",
+        "replanned",
+        "request_received",
+        "responded",
+        "step_finished",
+        "step_started",
+        "tool_called",
+        "tool_result",
+        "tool_reused"
+      ]
+    },
+    "llm_decision": {
+      "source": "llm",
+      "intent": "departures",
+      "reason": "내일 인천공항에 오전 9시 도착한 뒤 이용 가능한 오사카행 출발 항공편을 찾는 요청이다."
+    },
+    "tool_elapsed_ms": [
+      1507,
+      270
+    ]
+  }
+}

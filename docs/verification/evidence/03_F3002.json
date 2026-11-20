@@ -1,0 +1,95 @@
+{
+  "no": 3,
+  "requirement": "F3002 · F3003",
+  "item": "식별자로 상세 조회 연결, 빈 속성은 판단하지 않음",
+  "status": "통과",
+  "note": "RS6347 → get_flight_detail 1건. 시각이 빈 편은 '판단하지 않음'으로 제외",
+  "elapsed_ms": 3,
+  "evidence": {
+    "candidate_from_list": {
+      "provider": "KAC",
+      "airport": "GMP",
+      "direction": "departure",
+      "airline": "에어서울",
+      "flight_no": "RS6347",
+      "scheduled": "2026-11-21 06:00",
+      "estimated": "2026-11-21 06:00",
+      "remark": null,
+      "line": "국내",
+      "terminal": null,
+      "gate": null,
+      "map_url": "https://www.google.com/maps/search/?api=1&query=%EC%A0%9C%EC%A3%BC+%EA%B3%B5%ED%95%AD",
+      "destination_code": "CJU",
+      "destination_name": "제주",
+      "codeshares": []
+    },
+    "detail_call": {
+      "args": {
+        "airport": "GMP",
+        "flight_no": "RS6347",
+        "date": "20261121"
+      },
+      "result": {
+        "ok": true,
+        "data": {
+          "airport": "GMP",
+          "airport_name": "김포",
+          "flight_no": "RS6347",
+          "date": "20261121",
+          "requested_date": "20261121",
+          "date_estimated": false,
+          "direction": "departure",
+          "count": 1,
+          "rows": [
+            {
+              "provider": "KAC",
+              "airport": "GMP",
+              "direction": "departure",
+              "airline": "에어서울",
+              "flight_no": "RS6347",
+              "scheduled": "2026-11-21 06:00",
+              "estimated": "2026-11-21 06:00",
+              "remark": null,
+              "line": "국내",
+              "terminal": null,
+              "gate": null,
+              "map_url": "https://www.google.com/maps/search/?api=1&query=%EC%A0%9C%EC%A3%BC+%EA%B3%B5%ED%95%AD",
+              "destination_code": "CJU",
+              "destination_name": "제주"
+            }
+          ],
+          "source": "한국공항공사 운항 목록 (탑승구는 당일 실시간 자료에만 있음)",
+          "note": null
+        }
+      }
+    },
+    "blank_attribute_case": {
+      "input": {
+        "provider": "KAC",
+        "airport": "GMP",
+        "direction": "departure",
+        "airline": "에어서울",
+        "flight_no": "RS6347",
+        "scheduled": null,
+        "estimated": null,
+        "remark": null,
+        "line": "국내",
+        "terminal": null,
+        "gate": null,
+        "map_url": "https://www.google.com/maps/search/?api=1&query=%EC%A0%9C%EC%A3%BC+%EA%B3%B5%ED%95%AD",
+        "destination_code": "CJU",
+        "destination_name": "제주",
+        "codeshares": []
+      },
+      "candidates": 0,
+      "rejected": [
+        {
+          "flight_no": "RS6347",
+          "airline": "에어서울",
+          "time": "-",
+          "reason": "출발 시각 정보 없음(판단하지 않음)"
+        }
+      ]
+    }
+  }
+}

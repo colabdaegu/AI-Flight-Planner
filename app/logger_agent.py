@@ -177,10 +177,28 @@ class AgentLogger:
 _attached = None
 
 
-def attach_logger(logger=None):
-    """이벤트 버스에 로거를 한 번만 연결한다."""
+def _broken_store(msg):
+    """검증용(VERIFY_LOGGER=broken): 저장이 항상 실패하는 구독자."""
+    raise RuntimeError("검증용 로그 저장 실패 (VERIFY_LOGGER=broken)")
+
+
+def attach_logger(logger=None, mode=None):
+    """이벤트 버스에 로거를 한 번만 연결한다. 조회(목록·상세·삭제)는 연결 여부와 상관없이 같은 객체로 한다.
+
+    mode (기본은 .env 의 VERIFY_LOGGER, 없으면 on)
+    - on     : 로깅 Agent 가 이벤트를 구독해 저장한다 (평소)
+    - off    : 구독하지 않는다. 메인 Agent 가 구독자 없이도 응답하는지 확인할 때 (체크리스트 15번)
+    - broken : 저장이 항상 실패하는 구독자를 단다. 저장 실패에도 대화가 되는지 확인할 때 (체크리스트 17번)
+    """
     global _attached
     if _attached is None:
         _attached = logger or AgentLogger()
-        bus.subscribe(_attached.on_event)
+        mode = (mode or config.VERIFY_LOGGER or "on").lower()
+        if mode == "broken":
+            bus.subscribe(_broken_store)
+            print("[logger] VERIFY_LOGGER=broken — 로그 저장이 일부러 실패합니다")
+        elif mode == "off":
+            print("[logger] VERIFY_LOGGER=off — 로깅 Agent 를 연결하지 않았습니다")
+        else:
+            bus.subscribe(_attached.on_event)
     return _attached

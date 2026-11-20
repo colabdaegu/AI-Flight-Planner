@@ -1,0 +1,27 @@
+{
+  "no": 11,
+  "requirement": "F3010",
+  "item": "대화 맥락: 바뀐 조건만 갱신",
+  "status": "통과",
+  "note": "출발 공항만 GMP→PUS, 목적지 CJU·날짜 20261121 유지",
+  "elapsed_ms": 7404,
+  "evidence": {
+    "first": {
+      "message": "내일 김포에서 제주 가는 가장 빠른 편",
+      "tool_args": {
+        "airport": "GMP",
+        "date": "20261121",
+        "destination": "CJU"
+      }
+    },
+    "second": {
+      "message": "김해에서는?",
+      "tool_args": {
+        "airport": "PUS",
+        "date": "20261121",
+        "destination": "CJU"
+      },
+      "inherited": []
+    }
+  }
+}

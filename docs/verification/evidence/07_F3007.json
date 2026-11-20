@@ -1,0 +1,143 @@
+{
+  "no": 7,
+  "requirement": "F3007 · NF3003",
+  "item": "앞 결과 → 다음 입력, Tool 실패해도 진행",
+  "status": "통과",
+  "note": "상세 조회 입력 = 판단에서 고른 편명. 보조 도구 실패(get_airport_congestion) 기록 후 응답까지 진행, 다음 요청 정상",
+  "elapsed_ms": 7438,
+  "evidence": {
+    "chain": {
+      "chosen_by_judge": "KE1143",
+      "detail_tool_args": [
+        {
+          "tool": "get_flight_detail",
+          "args": {
+            "airport": "GMP",
+            "flight_no": "KE1143",
+            "date": "20261120",
+            "direction": "departure"
+          },
+          "role": "detail"
+        }
+      ],
+      "detail_skipped": [],
+      "tools": [
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "GMP",
+            "date": "20261120",
+            "destination": "CJU"
+          },
+          "role": "candidates",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 0,
+          "count": 34
+        },
+        {
+          "tool": "get_airport_congestion",
+          "args": {
+            "airport": "GMP"
+          },
+          "role": "support",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 0,
+          "count": 1
+        },
+        {
+          "tool": "get_flight_detail",
+          "args": {
+            "airport": "GMP",
+            "flight_no": "KE1143",
+            "date": "20261120",
+            "direction": "departure"
+          },
+          "role": "detail",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 0,
+          "count": 1
+        }
+      ]
+    },
+    "forced_failure": {
+      "VERIFY_FAIL_TOOLS": [
+        "get_airport_congestion",
+        "get_hourly_traffic",
+        "get_incheon_passenger_forecast"
+      ],
+      "failed_results": [
+        {
+          "tool": "get_airport_congestion",
+          "ok": false,
+          "code": "NETWORK",
+          "elapsed_ms": 0,
+          "count": null
+        }
+      ],
+      "steps": "analyze(1352ms) → plan(4ms) → execute(613ms) → judge(3ms) → enrich(652ms) → respond(4ms)",
+      "answer": "추천: 대한항공 KE1143 — 2026-11-20 15:55 김포국제공항(GMP) 출발 → 제주국제공항(CJU)\n- 상태 탑승장 입장 · 탑승구 9\n- 늦어도 공항 도착 14:55 (출발 15:55에서 짐·보안검색 여유 60분을 뺀 역산)\n- 체크인 마감(추정) 15:25 (국내선 출발 30분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)\n- 보조 정보(한국공항공사 공항 혼잡도(실시간))는 불러오지 못했습니다.\n다른 후보:\n- 16:05 제주항공 7C131 → 제주국제공항(CJU) · 탑승장 입장\n- 16:25 대한항공 KE1157 → 제주국제공항(CJU) · 지연\n- 16:35 제주항공 7C133 → 제주국제공항(CJU) · 지연\n판단 기준: 지금(15:48) 이후 출발하는 편 · 목적지 제주국제공항(CJU) · 그중 가장 이른 편\n가정: 날짜를 말하지 않아 오늘부터 찾았습니다.\n근거 자료: 한국공항공사 실시간 운항 정보, 한국공항공사 실시간 운항 정보(info)\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오."
+    },
+    "next_request": {
+      "session_id": "verify-11201548-c07-after",
+      "message": "김해에서 제주 가는 편",
+      "http": 200,
+      "elapsed_ms": 3399,
+      "intent": "departures",
+      "intent_source": "llm",
+      "replans": 0,
+      "steps": "analyze(1705ms) → plan(4ms) → execute(857ms) → judge(4ms) → enrich(746ms) → respond(3ms)",
+      "tools": [
+        {
+          "tool": "search_departures",
+          "args": {
+            "airport": "PUS",
+            "date": "20261120",
+            "destination": "CJU"
+          },
+          "role": "candidates",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 613,
+          "count": 11
+        },
+        {
+          "tool": "get_airport_congestion",
+          "args": {
+            "airport": "PUS"
+          },
+          "role": "support",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 221,
+          "count": 1
+        },
+        {
+          "tool": "get_flight_detail",
+          "args": {
+            "airport": "PUS",
+            "flight_no": "LJ3759",
+            "date": "20261120",
+            "direction": "departure"
+          },
+          "role": "detail",
+          "ok": true,
+          "code": null,
+          "elapsed_ms": 734,
+          "count": 1
+        }
+      ],
+      "answer": "추천: 진에어 LJ3759 — 2026-11-20 16:20 김해국제공항(PUS) 출발 → 제주국제공항(CJU)\n- 상태 수속중 · 탑승구 37\n- 늦어도 공항 도착 15:20 (출발 16:20에서 짐·보안검색 여유 60분을 뺀 역산)\n- 체크인 마감(추정) 15:50 (국내선 출발 30분 전, 주요 항공사 기준 — 공공데이터에 없는 값이라 항공사 안내로 확인)\n- 참고: 김해국제공항 국내선 지금(15:45) 혼잡 1.0단계 (실시간 값이라 공항 도착 시각의 혼잡과는 다를 수 있음).\n다른 후보:\n- 16:20 아시아나항공 OZ8117 → 제주국제공항(CJU) · 수속중\n- 16:20 에어부산 BX8959 → 제주국제공항(CJU) · 수속중\n- 17:00 대한항공 KE5229 → 제주국제공항(CJU) · 수속중\n판단 기준: 지금(15:48) 이후 출발하는 편 · 목적지 제주국제공항(CJU)\n가정: 날짜를 말하지 않아 오늘부터 찾았습니다.\n근거 자료: 한국공항공사 실시간 운항 정보, 한국공항공사 공항 혼잡도(실시간), 한국공항공사 실시간 운항 정보(info)\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+      "audit": {
+        "run_index": 0,
+        "status": "normal",
+        "status_label": "이상 없음",
+        "warnings": [],
+        "diagnosis": null
+      },
+      "error": null
+    }
+  }
+}

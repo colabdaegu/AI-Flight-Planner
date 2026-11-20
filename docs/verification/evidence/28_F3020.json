@@ -1,0 +1,78 @@
+{
+  "no": 28,
+  "requirement": "F3020",
+  "item": "이상 징후 판단 (심화)",
+  "status": "통과",
+  "note": "반복·재계획 과다·계획 외 호출 각각 경고, 근거 없음은 판정 불가, 정상 실행 LLM 0회, 이상 실행만 진단(LLM), 다음 질문에서 audit_referenced",
+  "elapsed_ms": 13626,
+  "evidence": {
+    "verdicts": {
+      "repeat": {
+        "session": "verify-11201548-c28-repeat",
+        "status": "anomaly",
+        "warnings": [
+          "REPEATED_CALL"
+        ],
+        "diagnosis": {
+          "status": "done",
+          "text": "문제는 메인 Agent의 **실행 단계**에서 `search_departures`를 같은 입력(`airport: \"GMP\"`)으로 **중복 호출**한 데 있습니다. 근거가 된 이벤트 번호는 **3번(첫 tool_called)** 과 **5번(두 번째 tool_called)** 입니다. 수정: 동일 호출 결과를 캐시/재사용하거나, 한 번 성공하면 후속 동일 호출을 막는 가드(중복 호출 방지 로직)를 추가하면 됩니다.",
+          "model": "gpt-5.4-nano",
+          "at": "2026-11-20T15:49:11"
+        },
+        "llm_calls": 1
+      },
+      "unplanned": {
+        "session": "verify-11201548-c28-unplanned",
+        "status": "anomaly",
+        "warnings": [
+          "UNPLANNED_CALL"
+        ],
+        "diagnosis": {
+          "status": "done",
+          "text": "문제는 메인 Agent의 **계획 단계와 실행 단계 불일치**로, 계획에 없던 도구를 호출한 경우입니다. 근거 이벤트 번호는 **5 (tool_called: get_incheon_facilities)** 입니다. 고치려면 이전 planned steps에 **get_incheon_facilities를 추가하거나**, 그렇지 않으면 해당 호출을 **계획에 맞는 흐름에서 제거/연기**하도록 로직을 정렬하면 됩니다.",
+          "model": "gpt-5.4-nano",
+          "at": "2026-11-20T15:49:12"
+        },
+        "llm_calls": 1
+      },
+      "undetermined": {
+        "session": "verify-11201548-c28-undetermined",
+        "status": "undetermined",
+        "warnings": [],
+        "diagnosis": null,
+        "llm_calls": 0
+      },
+      "excessive_replan(실제 실행)": {
+        "session": "verify-11201548-c10-limit",
+        "status": "anomaly",
+        "warnings": [
+          "EXCESSIVE_REPLAN"
+        ],
+        "diagnosis": {
+          "status": "done",
+          "text": "메인 Agent의 **판단/재계획(Problem-solving) 단계**에서 조건 불충족을 근거로 날짜를 계속 늘려 **재계획 상한(3회)**에 도달한 것이 원인입니다. 근거 이벤트 번호: **seq 15, 25, 35**에서 각각 `replanned`가 발생했고, 마지막에 **seq 45**에서 “재계획 상한(3회)에 도달”로 판정했습니다. 수정: `search_departures` 결과가 비어 있을 때 무조건 날짜를 하루씩 넓히기보다(추측) **도구 결과/조건(공항 코드 GMP↔김포, SDJ↔센다이, 날짜 범위, ‘가장 빠른 편’의 정의/허용 조건)을 먼저 재검증**하고, **단일 상한 내에서 대체안 제시(예: 다른 공항/시간대/도착공항, 또는 사용자 확인 질문)**로 재계획 횟수를 줄이도록 로직을 바꾸면 됩니다.",
+          "model": "gpt-5.4-nano",
+          "at": "2026-11-20T15:48:49"
+        },
+        "llm_calls": 1
+      },
+      "normal(실제 실행)": {
+        "session": "verify-11201548-c28-normal",
+        "status": "normal",
+        "warnings": [],
+        "diagnosis": null,
+        "llm_calls": 0
+      }
+    },
+    "main_agent_reference": [
+      {
+        "run_index": 0,
+        "status": "anomaly",
+        "warnings": [
+          "EXCESSIVE_REPLAN"
+        ]
+      }
+    ],
+    "note": "repeat·unplanned·undetermined 는 규칙 확인용 시험 기록, excessive_replan·normal 은 실제 실행"
+  }
+}

@@ -1,0 +1,592 @@
+{
+  "session_id": "verify-11201548-c10-limit",
+  "request": "빠른 시일 내에 김포에서 센다이 가는 편",
+  "answer": "조건을 만족하는 항공편을 찾지 못했습니다 (마지막으로 찾은 날짜 2026-11-23).\n재계획 상한(3회)에 도달해 멈췄습니다.\n조건을 바꿔 보십시오: 다른 출발 공항(예: 김포·김해), 다른 날짜, 또는 시간 조건 완화.\n판단 기준: 목적지 센다이(SDJ) · 그중 가장 이른 편\n재계획 3회: 조건을 만족하는 편이 없음 → 1일 뒤 날짜로 넓혀 다시 조회 / 조건을 만족하는 편이 없음 → 2일 뒤 날짜로 넓혀 다시 조회 / 조건을 만족하는 편이 없음 → 3일 뒤 날짜로 넓혀 다시 조회\n가정: 날짜를 말하지 않아 오늘부터 찾았습니다.\n근거 자료: 한국공항공사 실시간 운항 정보\n운항 정보는 실시간으로 바뀝니다. 출발 전에 항공사 안내를 다시 확인하십시오.",
+  "elapsed_ms": 3317,
+  "events": [
+    {
+      "event": "request_received",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:46",
+      "payload": {
+        "message": "빠른 시일 내에 김포에서 센다이 가는 편",
+        "chars": 22,
+        "has_memory": false
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:46",
+      "payload": {
+        "step": "analyze"
+      }
+    },
+    {
+      "event": "intent_analyzed",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "source": "llm",
+        "intent": "departures",
+        "reason": "빠른 시일 내에 김포 출발 센다이 도착 항공편 중 가장 빠른 편을 찾는 요청입니다.",
+        "conditions": {
+          "airport": "GMP",
+          "destination": "센다이",
+          "origin": "김포",
+          "flexible_date": true,
+          "earliest": true
+        },
+        "groups": {
+          "기준": {
+            "flexible_date": true,
+            "airport": "GMP"
+          },
+          "선호": {
+            "destination": "센다이",
+            "origin": "김포",
+            "earliest": true
+          },
+          "제약": {}
+        },
+        "empty": [
+          "date",
+          "from_time",
+          "flight_no",
+          "keyword",
+          "to_time",
+          "arrive_airport_at",
+          "buffer_min"
+        ],
+        "inherited": [],
+        "note": null
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "step": "analyze",
+        "elapsed_ms": 1474
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "step": "plan"
+      }
+    },
+    {
+      "event": "planned",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "attempt": 0,
+        "steps": [
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261120",
+              "destination": "SDJ"
+            }
+          },
+          {
+            "tool": "get_airport_congestion",
+            "args": {
+              "airport": "GMP"
+            }
+          }
+        ],
+        "followups": [
+          "get_flight_detail"
+        ],
+        "missing": null,
+        "assumptions": [
+          "날짜를 말하지 않아 오늘부터 찾았습니다."
+        ]
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "step": "plan",
+        "elapsed_ms": 4
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "step": "execute"
+      }
+    },
+    {
+      "event": "tool_called",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "tool": "search_departures",
+        "args": {
+          "airport": "GMP",
+          "date": "20261120",
+          "destination": "SDJ"
+        },
+        "role": "candidates"
+      }
+    },
+    {
+      "event": "tool_result",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "tool": "search_departures",
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 427,
+        "count": 0
+      }
+    },
+    {
+      "event": "tool_called",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "tool": "get_airport_congestion",
+        "args": {
+          "airport": "GMP"
+        },
+        "role": "support"
+      }
+    },
+    {
+      "event": "tool_result",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "tool": "get_airport_congestion",
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 0,
+        "count": 1
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "step": "execute",
+        "elapsed_ms": 446
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "step": "judge"
+      }
+    },
+    {
+      "event": "replanned",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "attempt": 1,
+        "reason": "조건을 만족하는 편이 없음 → 1일 뒤 날짜로 넓혀 다시 조회"
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "step": "judge",
+        "elapsed_ms": 3
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "step": "plan"
+      }
+    },
+    {
+      "event": "planned",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "attempt": 1,
+        "steps": [
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261121",
+              "destination": "SDJ"
+            }
+          }
+        ],
+        "followups": [
+          "get_flight_detail"
+        ],
+        "missing": null,
+        "assumptions": [
+          "날짜를 말하지 않아 오늘부터 찾았습니다."
+        ]
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "step": "plan",
+        "elapsed_ms": 4
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "step": "execute"
+      }
+    },
+    {
+      "event": "tool_called",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:48",
+      "payload": {
+        "tool": "search_departures",
+        "args": {
+          "airport": "GMP",
+          "date": "20261121",
+          "destination": "SDJ"
+        },
+        "role": "candidates"
+      }
+    },
+    {
+      "event": "tool_result",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "tool": "search_departures",
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 377,
+        "count": 0
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "execute",
+        "elapsed_ms": 388
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "judge"
+      }
+    },
+    {
+      "event": "replanned",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "attempt": 2,
+        "reason": "조건을 만족하는 편이 없음 → 2일 뒤 날짜로 넓혀 다시 조회"
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "judge",
+        "elapsed_ms": 4
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "plan"
+      }
+    },
+    {
+      "event": "planned",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "attempt": 2,
+        "steps": [
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261122",
+              "destination": "SDJ"
+            }
+          }
+        ],
+        "followups": [
+          "get_flight_detail"
+        ],
+        "missing": null,
+        "assumptions": [
+          "날짜를 말하지 않아 오늘부터 찾았습니다."
+        ]
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "plan",
+        "elapsed_ms": 4
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "execute"
+      }
+    },
+    {
+      "event": "tool_called",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "tool": "search_departures",
+        "args": {
+          "airport": "GMP",
+          "date": "20261122",
+          "destination": "SDJ"
+        },
+        "role": "candidates"
+      }
+    },
+    {
+      "event": "tool_result",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "tool": "search_departures",
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 395,
+        "count": 0
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "execute",
+        "elapsed_ms": 407
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "judge"
+      }
+    },
+    {
+      "event": "replanned",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "attempt": 3,
+        "reason": "조건을 만족하는 편이 없음 → 3일 뒤 날짜로 넓혀 다시 조회"
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "judge",
+        "elapsed_ms": 3
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "plan"
+      }
+    },
+    {
+      "event": "planned",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "attempt": 3,
+        "steps": [
+          {
+            "tool": "search_departures",
+            "args": {
+              "airport": "GMP",
+              "date": "20261123",
+              "destination": "SDJ"
+            }
+          }
+        ],
+        "followups": [
+          "get_flight_detail"
+        ],
+        "missing": null,
+        "assumptions": [
+          "날짜를 말하지 않아 오늘부터 찾았습니다."
+        ]
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "plan",
+        "elapsed_ms": 4
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "execute"
+      }
+    },
+    {
+      "event": "tool_called",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "tool": "search_departures",
+        "args": {
+          "airport": "GMP",
+          "date": "20261123",
+          "destination": "SDJ"
+        },
+        "role": "candidates"
+      }
+    },
+    {
+      "event": "tool_result",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "tool": "search_departures",
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 408,
+        "count": 0
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "execute",
+        "elapsed_ms": 419
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "judge"
+      }
+    },
+    {
+      "event": "judged",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "decision": "respond",
+        "candidates": 0,
+        "rejected": 0,
+        "rejected_reasons": {},
+        "criteria": [
+          "목적지 센다이(SDJ)",
+          "그중 가장 이른 편"
+        ],
+        "reason": "재계획 상한(3회)에 도달"
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "judge",
+        "elapsed_ms": 3
+      }
+    },
+    {
+      "event": "step_started",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "respond"
+      }
+    },
+    {
+      "event": "responded",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "chars": 369,
+        "cards": 0,
+        "replans": 3
+      }
+    },
+    {
+      "event": "step_finished",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "step": "respond",
+        "elapsed_ms": 3
+      }
+    },
+    {
+      "event": "memory_updated",
+      "session_id": "verify-11201548-c10-limit",
+      "ts": "2026-11-20T15:48:49",
+      "payload": {
+        "intent": "departures",
+        "summary": "departures GMP→SDJ 20261123 추천 없음"
+      }
+    }
+  ]
+}
