@@ -130,6 +130,12 @@ def merge_context(new, prev, message=""):
     if kind == "flight_detail" and not new.get("flight_no") and prev.get("flight_no"):
         new["flight_no"] = prev["flight_no"]
         inherited.append("flight_no")
+    # 도착 편: 기준 공항과 출발지가 같은 공항이면 출발지는 잘못 이어받은 값이므로 버린다
+    if kind == "arrivals" and new.get("origin") and new.get("airport"):
+        from app import airports
+        if new["airport"] in [c for c in airports.resolve_codes(new["origin"]) if c in airports.NAMES]:
+            new["origin"] = None
+            inherited = [k for k in inherited if k != "origin"]
     return new, inherited
 
 

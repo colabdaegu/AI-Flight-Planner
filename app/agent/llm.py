@@ -247,8 +247,9 @@ def rule_intent(text, today=None, now=None):
         kind = "departures"
     else:
         kind = "unknown"
-    if kind == "arrivals" and destination and not origin:
-        origin, destination = destination, None
+    if kind == "arrivals" and destination and not origin and not airport:
+        # '대구로 도착하는 편'의 '대구'는 도착 공항이다(출발지가 아니다).
+        airport, destination = destination, None
 
     return normalize(Intent(intent=kind, airport=airport, destination=destination, origin=origin,
                             flight_no=flight_no, date=date, flexible_date=flexible, from_time=from_time,
@@ -291,6 +292,9 @@ def system_prompt(previous=None, now=None):
         "'1시간', '90분' 같은 시간 길이는 시각이 아니다.\n"
         "date 는 YYYYMMDD 로, 오늘·내일·모레·요일을 오늘 기준으로 계산한다. 시간은 HHMM.\n"
         "flight_no 는 공백 없이 대문자 (ke 123 → KE123). keyword 는 시설 종류(면세점, 약국 등).\n"
+        "arrivals 에서 '○○로 도착하는', '○○에 도착하는', '○○ 도착 편'의 ○○는 도착 공항이므로 airport 에 넣고 "
+        "origin 은 null 이다. origin 은 '○○에서 출발', '○○발', '○○에서 오는'처럼 출발지를 명시할 때만 채운다. "
+        "같은 공항을 airport 와 origin 에 동시에 넣지 마라.\n"
         "reason 에 이 intent 로 분류한 이유를 한 문장으로 적는다." + prev)
 
 
@@ -333,6 +337,11 @@ def reconcile(llm_it, rule_it, previous=None):
         if codes:
             d["airport"], d["destination"] = codes[0], None
             filled.append("airport←destination")
+    if d["intent"] == "arrivals" and d.get("origin") and d.get("airport"):
+        same = [c for c in airports.resolve_codes(d["origin"]) if c in airports.NAMES]
+        if d["airport"] in same:                 # 도착 공항과 출발지가 같은 값 → 출발지는 잘못 채운 것
+            d["origin"] = None
+            filled.append("origin 중복 제거")
     same_kind = r["intent"] == d["intent"] or r["intent"] == "unknown"
     prev = previous or {}
     for k in FILLABLE:
