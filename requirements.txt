@@ -1,0 +1,14 @@
+# Python 3.10+
+# 공통
+python-dotenv==1.2.3
+requests==2.34.2
+
+# 백엔드 (FastAPI · 에이전트)
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.5
+langgraph==1.2.10
+langchain-openai==1.4.3
+
+# 테스트
+pytest==9.1.1
